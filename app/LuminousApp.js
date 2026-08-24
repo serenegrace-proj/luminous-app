@@ -2169,7 +2169,7 @@ function PomodoroFlow({ t, onExit, nav }) {
 function SplashScreen({ onBegin, t }) {
   return (
     <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-center px-6 text-center">
-      <div className="relative w-56 h-56 mb-10 flex items-center justify-center">
+      <div className="relative w-56 h-56 sm:w-72 sm:h-72 mb-10 flex items-center justify-center">
         <div
           className="absolute inset-0 rounded-full blur-2xl opacity-70"
           style={{ background: `conic-gradient(from 0deg, ${BRAND.mistBlue}, ${BRAND.sageGreen}, ${BRAND.sageFog}, ${BRAND.mistBlue})`, animation: 'orbSpin 18s linear infinite' }}
@@ -2182,13 +2182,13 @@ function SplashScreen({ onBegin, t }) {
           <LuminousMark size={140} />
         </div>
       </div>
-      <p className={`text-2xl mb-2 tracking-[0.25em] ${t.heading}`} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>LUMINOUS</p>
-      <p className={`text-sm mb-8 ${t.textSoft}`}>Find a little space to breathe.</p>
+      <p className={`text-3xl sm:text-5xl mb-3 tracking-[0.25em] ${t.heading}`} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>LUMINOUS</p>
+      <p className={`text-lg sm:text-2xl mb-8 ${t.textSoft}`}>Find a little space to breathe.</p>
       <div className="w-8 h-px mb-8" style={{ backgroundColor: BRAND.lightGray, opacity: 0.6 }} />
-      <p className={`text-xs leading-relaxed mb-12 ${t.textSoft}`}>A moment for you.<br />A lifetime of clarity.</p>
+      <p className={`text-base sm:text-xl leading-relaxed mb-12 ${t.textSoft}`}>A moment for you.<br />A lifetime of clarity.</p>
       <button
         onClick={onBegin}
-        className={`px-9 py-3.5 rounded-full text-sm tracking-wide transition-all duration-300 ${t.button}`}
+        className={`px-9 sm:px-12 py-3.5 sm:py-4.5 rounded-full text-sm sm:text-lg tracking-wide transition-all duration-300 ${t.button}`}
       >
         Begin
       </button>
