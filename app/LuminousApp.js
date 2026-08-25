@@ -183,8 +183,8 @@ const AT_STAGE_META = {
   transfer: { label: 'Transfer', concept: 'meansWhereby' },
 };
 
-// Body regions the diagram can highlight. Keep this list in sync with
-// BodyAwarenessDiagram's drawing code below.
+// Body regions the illustrations can highlight. Keep this list in sync with
+// AwarenessIllustration's pose drawings and POSE_POINTS below.
 const BODY_REGIONS = ['head', 'neck', 'shoulders', 'spine', 'pelvis', 'hands', 'feet'];
 
 // Simple, dependency-free keyword spotting so the diagram can highlight
@@ -207,13 +207,20 @@ function detectRegions(text) {
     .map(([id]) => id);
 }
 
-// The AT / body-awareness exercise library. Start with 4; add more by
-// appending another { id, name, blurb, stages } entry.
+// The AT / body-awareness exercise library. Each exercise is tagged with the
+// user states it best serves (see deriveActiveTags/buildSession below), so a
+// session is assembled from whichever exercises actually match how someone
+// is feeling, rather than everyone getting the same fixed list. `pose` picks
+// which illustrated body position AwarenessIllustration draws; `movement`
+// marks exercises that involve actual motion (used by the restless branch).
 const AT_EXERCISES = [
   {
     id: 'primaryDirections',
     name: 'Primary Directions',
     blurb: 'The classic neck–head–back directions, one at a time.',
+    tags: ['tense', 'distracted', 'calm'],
+    pose: 'sitting',
+    movement: false,
     stages: {
       notice: {
         prompt: "Notice how you're sitting or standing right now, without changing anything.",
@@ -246,6 +253,9 @@ const AT_EXERCISES = [
     id: 'lyingDown',
     name: 'Lying Down Awareness',
     blurb: 'A gentle body scan in semi-supine — the classic Alexander resting position.',
+    tags: ['sleep', 'tired', 'lowEnergy', 'overwhelmed'],
+    pose: 'semiSupine',
+    movement: false,
     stages: {
       notice: {
         prompt: "Lie on your back with your knees bent and feet flat, a support under your head if you have one. Once you're settled, notice how your back meets the floor.",
@@ -278,6 +288,9 @@ const AT_EXERCISES = [
     id: 'sitToStand',
     name: 'Sitting → Standing',
     blurb: 'Notice your habitual pattern of standing up, and explore a freer one.',
+    tags: ['restless', 'distracted', 'energized'],
+    pose: 'sitToStand',
+    movement: true,
     stages: {
       notice: {
         prompt: "Sit toward the front edge of a chair, feet flat on the floor. Before moving, just notice how you're about to stand up.",
@@ -310,6 +323,9 @@ const AT_EXERCISES = [
     id: 'studyAwareness',
     name: 'Studying Awareness',
     blurb: 'Notice how your body holds itself while reading or working at a desk.',
+    tags: ['distracted', 'tense', 'focusedButTense'],
+    pose: 'sitting',
+    movement: false,
     stages: {
       notice: {
         prompt: 'Sit as you normally would to study or work. After a moment, notice your shoulders.',
@@ -338,7 +354,382 @@ const AT_EXERCISES = [
       },
     },
   },
+  {
+    id: 'jawRelease',
+    name: 'Jaw & Face Ease',
+    blurb: 'Softening jaw and face tension without gritting or forcing.',
+    tags: ['tense', 'anxious', 'overwhelmed'],
+    pose: 'sitting',
+    movement: false,
+    stages: {
+      notice: {
+        prompt: 'Notice your jaw and the muscles around your mouth and eyes, just as they are.',
+        questions: ['What do you notice in your jaw or face?', 'Are your teeth touching?'],
+        regions: ['head'],
+      },
+      investigate: {
+        prompt: 'Bring your attention to your tongue and the roof of your mouth — where is your tongue resting?',
+        questions: ['What do you notice about your tongue and teeth?'],
+        regions: ['head'],
+      },
+      explore: {
+        prompt: 'Silently think "let my jaw be free" and let your lips part slightly, teeth coming apart.',
+        questions: ['What did you notice as your jaw softened?'],
+        regions: ['head', 'neck'],
+      },
+      compare: {
+        prompt: 'Notice your jaw and face again.',
+        questions: ["What's different, if anything?", 'Can you notice that without judging it?'],
+        regions: ['head'],
+      },
+      transfer: {
+        prompt: 'See if you can let your jaw stay a little softer as you go about speaking or reading today.',
+        questions: ['What would it be like to carry this with you?'],
+        regions: ['head'],
+      },
+    },
+  },
+  {
+    id: 'breathingSpace',
+    name: 'Breath & Ribs Awareness',
+    blurb: 'Letting the breath move without forcing it, widening through the ribs.',
+    tags: ['anxious', 'overwhelmed', 'restless'],
+    pose: 'standing',
+    movement: false,
+    stages: {
+      notice: {
+        prompt: 'Standing or sitting, notice your breath just as it is — no need to change it yet.',
+        questions: ['What do you notice about your breathing?'],
+        regions: ['spine'],
+      },
+      investigate: {
+        prompt: 'Bring your attention to your ribs, side and back, as you breathe.',
+        questions: ['Do your ribs move as you breathe, or mostly your chest?'],
+        regions: ['spine', 'shoulders'],
+      },
+      explore: {
+        prompt: 'Silently think "let my ribs widen" as you breathe in, without pulling the air in forcefully.',
+        questions: ['What did you notice as you let that happen?'],
+        regions: ['spine', 'shoulders'],
+      },
+      compare: {
+        prompt: 'Notice your breath once more.',
+        questions: ["What's different, if anything?"],
+        regions: ['spine'],
+      },
+      transfer: {
+        prompt: 'See if you can remember this wider breath the next time you feel your chest tighten.',
+        questions: ['What would it be like to carry this with you?'],
+        regions: ['spine'],
+      },
+    },
+  },
+  {
+    id: 'handsAndWrists',
+    name: 'Hands & Wrists Ease',
+    blurb: 'Releasing excess grip in the hands and wrists from typing, scrolling, or writing.',
+    tags: ['tense', 'focusedButTense', 'distracted'],
+    pose: 'sitting',
+    movement: false,
+    stages: {
+      notice: {
+        prompt: 'Notice your hands right now — however they are resting or working.',
+        questions: ['What do you notice about your hands?'],
+        regions: ['hands'],
+      },
+      investigate: {
+        prompt: 'Bring your attention to your wrists and fingers — is there gripping there beyond what the task needs?',
+        questions: ['Where do you notice extra effort?'],
+        regions: ['hands'],
+      },
+      explore: {
+        prompt: 'Let your fingers soften and your wrists release, holding only as much as you actually need.',
+        questions: ['What did you notice as you softened your grip?'],
+        regions: ['hands'],
+      },
+      compare: {
+        prompt: 'Notice your hands and wrists again.',
+        questions: ["What's different, if anything?"],
+        regions: ['hands'],
+      },
+      transfer: {
+        prompt: 'As you go back to typing or holding your phone, see if you can check in with your hands every so often.',
+        questions: ['What would it be like to check in like that?'],
+        regions: ['hands'],
+      },
+    },
+  },
+  {
+    id: 'groundedStanding',
+    name: 'Grounded Standing',
+    blurb: 'Finding a steady, unforced connection with the floor.',
+    tags: ['restless', 'anxious', 'overwhelmed', 'tired'],
+    pose: 'standing',
+    movement: false,
+    stages: {
+      notice: {
+        prompt: 'Stand comfortably and notice your feet on the floor.',
+        questions: ['What do you notice about your feet and how your weight rests?'],
+        regions: ['feet'],
+      },
+      investigate: {
+        prompt: 'Notice whether your weight leans more forward, back, or to one side.',
+        questions: ['Where does your weight feel like it is?'],
+        regions: ['feet', 'pelvis'],
+      },
+      explore: {
+        prompt: 'Silently think "let my feet release into the floor" and let your weight settle evenly.',
+        questions: ['What did you notice as your weight settled?'],
+        regions: ['feet', 'pelvis'],
+      },
+      compare: {
+        prompt: 'Notice your feet and your balance again.',
+        questions: ["What's different, if anything?"],
+        regions: ['feet'],
+      },
+      transfer: {
+        prompt: 'See if you can find this same grounded feeling the next time you stand and wait for something.',
+        questions: ['What would it be like to carry this with you?'],
+        regions: ['feet'],
+      },
+    },
+  },
+  {
+    id: 'gentleSway',
+    name: 'Gentle Weight Shifts',
+    blurb: 'A little movement for restless energy — small, unhurried weight shifts.',
+    tags: ['restless', 'energized', 'lowEnergy'],
+    pose: 'sway',
+    movement: true,
+    stages: {
+      notice: {
+        prompt: 'Notice any urge to move, fidget, or shift your weight right now.',
+        questions: ['What do you notice about that restlessness?'],
+        regions: ['feet', 'pelvis'],
+      },
+      investigate: {
+        prompt: 'Notice your feet and the floor beneath them.',
+        questions: ['What do you feel under your feet?'],
+        regions: ['feet'],
+      },
+      explore: {
+        prompt: 'Let your weight shift gently from one foot to the other, slow and unhurried, like a soft sway.',
+        questions: ['What did you notice as you moved slowly?'],
+        regions: ['feet', 'pelvis', 'spine'],
+      },
+      compare: {
+        prompt: 'Pause and notice how your body feels now, after moving.',
+        questions: ["What's different, if anything?"],
+        regions: ['pelvis', 'spine'],
+      },
+      transfer: {
+        prompt: 'Next time restlessness builds up, see if a few slow sways like this could help.',
+        questions: ['What would it be like to carry this with you?'],
+        regions: ['spine'],
+      },
+    },
+  },
+  {
+    id: 'wakingActivation',
+    name: 'Gentle Wake-Up',
+    blurb: 'A gentle activation for low energy — waking the body up without straining.',
+    tags: ['tired', 'lowEnergy', 'sleep'],
+    pose: 'standing',
+    movement: true,
+    stages: {
+      notice: {
+        prompt: 'Notice how heavy or awake your body feels right now.',
+        questions: ['What do you notice about your energy?'],
+        regions: ['spine'],
+      },
+      investigate: {
+        prompt: 'Notice your breath — is it shallow, or full?',
+        questions: ['What do you notice about your breathing?'],
+        regions: ['spine'],
+      },
+      explore: {
+        prompt: 'Let your arms float upward as you breathe in, following the direction rather than forcing it, then release them back down.',
+        questions: ['What did you notice as you did that?'],
+        regions: ['hands', 'spine', 'head'],
+      },
+      compare: {
+        prompt: 'Notice your energy and your breath again.',
+        questions: ["What's different, if anything?"],
+        regions: ['spine'],
+      },
+      transfer: {
+        prompt: 'See if you can bring a small version of this movement into your next break.',
+        questions: ['What would it be like to carry this with you?'],
+        regions: ['spine'],
+      },
+    },
+  },
+  {
+    id: 'calmMindAnchor',
+    name: 'Calm Mind Anchor',
+    blurb: "A quiet integration practice for when you're already feeling steadier.",
+    tags: ['calm', 'anxious', 'overwhelmed'],
+    pose: 'sitting',
+    movement: false,
+    stages: {
+      notice: {
+        prompt: 'Sit comfortably and notice how calm actually feels in your body right now.',
+        questions: ['What do you notice about this calmer state?'],
+        regions: ['spine', 'shoulders'],
+      },
+      investigate: {
+        prompt: 'Notice where in your body this ease is most present.',
+        questions: ['Where do you feel it most?'],
+        regions: ['spine'],
+      },
+      explore: {
+        prompt: 'Silently think "let this ease lengthen through my spine" and let it settle in a little further.',
+        questions: ['What did you notice as you did that?'],
+        regions: ['spine', 'head'],
+      },
+      compare: {
+        prompt: 'Notice your whole body once more.',
+        questions: ["What's different, if anything?"],
+        regions: ['spine'],
+      },
+      transfer: {
+        prompt: 'See if you can remember the feeling of this moment the next time things get busy.',
+        questions: ['What would it be like to carry this with you?'],
+        regions: ['spine'],
+      },
+    },
+  },
+  {
+    id: 'eveningWindDown',
+    name: 'Evening Wind-Down',
+    blurb: 'A longer rest in semi-supine, easing the whole body toward sleep.',
+    tags: ['sleep', 'tired', 'calm'],
+    pose: 'semiSupine',
+    movement: false,
+    stages: {
+      notice: {
+        prompt: "Lie on your back with knees bent, feet flat, a support under your head if you have one. Notice your whole body resting into the floor.",
+        questions: ['What do you notice as you let the floor take your weight?'],
+        regions: ['spine', 'pelvis'],
+      },
+      investigate: {
+        prompt: 'Notice your breath slowing, and any tension left in your shoulders or jaw.',
+        questions: ['What do you notice there?'],
+        regions: ['shoulders', 'head'],
+      },
+      explore: {
+        prompt: 'Silently think "let my whole body be heavy and supported" and let each part rest a little more.',
+        questions: ['What did you notice as you let go a little more?'],
+        regions: ['spine', 'pelvis', 'shoulders'],
+      },
+      compare: {
+        prompt: 'Notice your body against the floor once more.',
+        questions: ["What's different, if anything?"],
+        regions: ['spine'],
+      },
+      transfer: {
+        prompt: 'Let this heaviness stay with you as you drift toward sleep.',
+        questions: ['What would it be like to carry this into sleep?'],
+        regions: ['spine'],
+      },
+    },
+  },
 ];
+
+/* -------- turning mood-quiz answers into exercise-matching state tags -------- */
+
+// Canonical vocabulary the exercise `tags` above are drawn from.
+const STATE_TAGS = [
+  'tense', 'overwhelmed', 'restless', 'distracted', 'tired', 'lowEnergy',
+  'anxious', 'focusedButTense', 'calm', 'sleep', 'energized',
+];
+
+const FEELING_TAG_MAP = {
+  calm: ['calm'], stressed: ['tense'], overwhelmed: ['overwhelmed', 'anxious'],
+  tired: ['tired', 'lowEnergy'], unfocused: ['distracted'], energized: ['energized'],
+};
+const MOOD_CATEGORY_TAG_MAP = {
+  anxious: ['anxious', 'overwhelmed'], stressed: ['tense'], focus: ['distracted'],
+  sad: ['tired', 'lowEnergy'], restless: ['restless'], frustrated: ['tense', 'overwhelmed'],
+  calm: ['calm'], motivated: ['energized'],
+};
+const TENSION_TAG_MAP = {
+  neck: ['tense'], shoulders: ['tense'], jaw: ['tense'], chest: ['tense', 'anxious'],
+  stomach: ['anxious'], head: ['tense'], hands: ['tense', 'focusedButTense'],
+  racing: ['overwhelmed', 'anxious'], lowenergy: ['tired', 'lowEnergy'], focus: ['distracted'],
+};
+const NEED_TAG_MAP = {
+  calmMind: ['anxious', 'overwhelmed'], release: ['tense'], improveFocus: ['distracted'],
+  recharge: ['tired', 'lowEnergy'], sleep: ['sleep', 'tired'],
+};
+
+// Reads the mood-quiz answers already collected in PreMoodScreen and turns
+// them into the state tags used to pick and order session exercises.
+function deriveActiveTags({ moodCategory, tensionAreas = [], need, feeling }) {
+  const tags = new Set();
+  (FEELING_TAG_MAP[feeling] || []).forEach(tag => tags.add(tag));
+  (MOOD_CATEGORY_TAG_MAP[moodCategory] || []).forEach(tag => tags.add(tag));
+  tensionAreas.forEach(area => (TENSION_TAG_MAP[area] || []).forEach(tag => tags.add(tag)));
+  (NEED_TAG_MAP[need] || []).forEach(tag => tags.add(tag));
+  if (tags.size === 0) tags.add('calm');
+  return Array.from(tags);
+}
+
+const SESSION_LENGTH = 3;
+
+// Assembles a short, continuous session from the exercises whose tags best
+// match how someone is currently feeling. A little randomness plus a penalty
+// for exercises used in the previous session keeps sessions from repeating
+// the same fixed sequence every time.
+function buildSession(activeTags, history = []) {
+  const scored = AT_EXERCISES.map(ex => {
+    const overlap = ex.tags.filter(tag => activeTags.includes(tag)).length;
+    const recencyPenalty = history.includes(ex.id) ? 1.5 : 0;
+    const jitter = Math.random() * 0.4;
+    return { ex, score: overlap + jitter - recencyPenalty };
+  });
+  scored.sort((a, b) => b.score - a.score);
+
+  let chosen = scored.slice(0, SESSION_LENGTH).map(s => s.ex);
+
+  // Guarantee representation for states that specifically call for movement
+  // or rest, even if their single best match didn't make the initial cut.
+  function ensureTag(tag) {
+    if (!activeTags.includes(tag) || chosen.some(ex => ex.tags.includes(tag))) return;
+    const candidate = scored.find(s => s.ex.tags.includes(tag) && !chosen.includes(s.ex));
+    if (candidate) chosen[chosen.length - 1] = candidate.ex;
+  }
+  ensureTag('restless');
+  ensureTag('lowEnergy');
+  ensureTag('sleep');
+
+  return Array.from(new Set(chosen)).map(ex => ex.id);
+}
+
+/* -------- branching: what a person says mid-session can redirect it -------- */
+
+const BRANCH_KEYWORDS = {
+  pain: ['pain', 'hurt', 'hurts', 'hurting', 'injury', 'injured', 'dizzy', 'dizziness', 'numb'],
+  tense: ['tight', 'tense', 'tension', 'stiff', 'gripping', 'clenched', 'clenching', 'sore'],
+  restless: ['restless', 'fidget', 'fidgety', 'antsy', 'jittery', 'squirmy', "can't sit still", 'cant sit still'],
+  tired: ['tired', 'sleepy', 'exhausted', 'drained', 'low energy', 'sluggish'],
+  calm: ['better', 'calmer', 'relaxed', 'easier', 'lighter', 'more at ease'],
+};
+const BRANCH_PRIORITY = ['pain', 'tense', 'restless', 'tired', 'calm'];
+
+// Lightweight, dependency-free keyword read on what someone just said, used
+// to branch the live session: tension softens the guidance level, restless
+// or low-energy responses pull in a matching exercise next, discomfort
+// pauses the session, and feeling better skips ahead. See advance() in
+// LuminousGuideFlow.
+function detectBranchSignal(text) {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+  for (const key of BRANCH_PRIORITY) {
+    if (BRANCH_KEYWORDS[key].some(k => lower.includes(k))) return key;
+  }
+  return null;
+}
 
 const GUIDE_LEVELS = [
   { id: 'gentle', label: 'Gentle' },
@@ -1033,50 +1424,265 @@ function ProgressRing({ fraction, size = 176, strokeW = 5, t }) {
   );
 }
 
-/* -------- one reusable body diagram, driven by a list of active regions -------- */
-function BodyAwarenessDiagram({ activeRegions = [], t }) {
-  const lineColor = t.isDark ? '#4B4A56' : '#D8D5E3';
-  const accent = '#A78BFA';
-  const on = (region) => activeRegions.includes(region);
-  const stroke = (region) => (on(region) ? accent : lineColor);
-  const width = (region) => (on(region) ? '2.6' : '2');
+/* -------- instructional illustrations: body positioning, anatomy labels,
+   and direction-of-movement arrows, keyed by each exercise's `pose` -------- */
+
+// Where each labeled body part sits within a given pose's 0 0 220 190
+// viewBox — used to place highlight rings, part labels, and direction
+// arrows on the right spot of whichever illustration is on screen.
+const POSE_POINTS = {
+  sitting: {
+    head: { x: 110, y: 30 }, neck: { x: 110, y: 52 }, shoulders: { x: 110, y: 64 },
+    spine: { x: 110, y: 100 }, pelvis: { x: 110, y: 126 },
+    hands: { x: 76, y: 82 }, feet: { x: 110, y: 178 },
+  },
+  standing: {
+    head: { x: 110, y: 30 }, neck: { x: 110, y: 52 }, shoulders: { x: 110, y: 64 },
+    spine: { x: 110, y: 105 }, pelvis: { x: 110, y: 136 },
+    hands: { x: 76, y: 96 }, feet: { x: 110, y: 178 },
+  },
+  sway: {
+    head: { x: 110, y: 30 }, neck: { x: 110, y: 52 }, shoulders: { x: 110, y: 64 },
+    spine: { x: 110, y: 105 }, pelvis: { x: 110, y: 136 },
+    hands: { x: 76, y: 96 }, feet: { x: 110, y: 178 },
+  },
+  semiSupine: {
+    head: { x: 30, y: 96 }, neck: { x: 52, y: 96 }, shoulders: { x: 66, y: 96 },
+    spine: { x: 105, y: 96 }, pelvis: { x: 130, y: 96 },
+    hands: { x: 85, y: 78 }, feet: { x: 150, y: 130 },
+  },
+  sitToStand: {
+    head: { x: 170, y: 30 }, neck: { x: 170, y: 52 }, shoulders: { x: 170, y: 64 },
+    spine: { x: 170, y: 105 }, pelvis: { x: 170, y: 136 },
+    hands: { x: 140, y: 96 }, feet: { x: 170, y: 178 },
+  },
+};
+
+// What each region does when a person actively applies a direction — only
+// shown during the 'explore'/'transfer' stages, since 'notice' explicitly
+// asks people not to change anything yet.
+const REGION_ARROW_META = {
+  head: { dy: -16, label: 'floats up' },
+  neck: { dy: -12, label: 'releases' },
+  shoulders: { dx: 16, mirror: true, label: 'widen' },
+  spine: { dy: -18, label: 'lengthens' },
+  pelvis: { dy: 8, label: 'settles' },
+  hands: { dx: 12, mirror: true, label: 'soften' },
+  feet: { dy: 10, label: 'ground down' },
+};
+
+const REGION_PART_LABEL = {
+  head: 'Head', neck: 'Neck', shoulders: 'Shoulders', spine: 'Spine',
+  pelvis: 'Pelvis', hands: 'Hands', feet: 'Feet',
+};
+
+function ArrowDefs() {
+  return (
+    <defs>
+      <marker id="atArrowhead" markerWidth="7" markerHeight="7" refX="3.2" refY="3.5" orient="auto">
+        <path d="M0,0 L7,3.5 L0,7 Z" fill="#A78BFA" />
+      </marker>
+    </defs>
+  );
+}
+
+// A soft, filled silhouette — head, neck, shoulder line, torso, arms, legs —
+// shared by every standing/sitting pose so anatomy reads consistently across
+// exercises. `seated` bends the legs and adds a chair; `dx`/`opacity` let
+// SitToStandFigure place a faded "start" copy alongside a solid "end" one.
+function HumanFigure({ dx = 0, opacity = 1, seated = false, stroke, width, fillTorso, t }) {
+  const legs = seated ? (
+    <>
+      <path d="M96,126 C88,134 84,146 84,178" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
+      <path d="M124,126 C132,134 136,146 136,178" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
+      <ellipse cx="80" cy="180" rx="10" ry="3.6" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} />
+      <ellipse cx="140" cy="180" rx="10" ry="3.6" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} />
+      {/* chair seat + backrest */}
+      <rect x="66" y="124" width="88" height="7" rx="2" fill={t.isDark ? '#2A2A33' : '#E7E4EE'} opacity="0.7" />
+      <rect x="140" y="58" width="8" height="72" rx="4" fill={t.isDark ? '#2A2A33' : '#E7E4EE'} opacity="0.5" />
+    </>
+  ) : (
+    <>
+      <line x1="98" y1="136" x2="92" y2="178" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
+      <line x1="122" y1="136" x2="128" y2="178" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
+      <ellipse cx="88" cy="182" rx="10" ry="3.6" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} />
+      <ellipse cx="132" cy="182" rx="10" ry="3.6" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} />
+    </>
+  );
 
   return (
-    <svg viewBox="0 0 120 168" className="relative w-40 h-56">
+    <g transform={`translate(${dx},0)`} opacity={opacity}>
+      {/* torso silhouette */}
+      <path
+        d="M84,64 C78,86 80,112 88,126 L132,126 C140,112 142,86 136,64 C124,56 96,56 84,64 Z"
+        fill={fillTorso}
+      />
       {/* head */}
-      <circle cx="60" cy="20" r="13" fill="none" stroke={stroke('head')} strokeWidth={width('head')} />
+      <circle cx="110" cy="30" r="17" fill={fillTorso} stroke={stroke('head')} strokeWidth={width('head')} />
       {/* neck */}
-      <line x1="60" y1="33" x2="60" y2="44" stroke={stroke('neck')} strokeWidth={width('neck')} strokeLinecap="round" />
-      {/* shoulders */}
-      <path d="M34,50 Q60,44 86,50" fill="none" stroke={stroke('shoulders')} strokeWidth={width('shoulders')} strokeLinecap="round" />
-      {/* spine */}
-      <line x1="60" y1="47" x2="60" y2="96" stroke={stroke('spine')} strokeWidth={width('spine')} strokeLinecap="round" />
+      <line x1="110" y1="47" x2="110" y2="60" stroke={stroke('neck')} strokeWidth={width('neck')} strokeLinecap="round" />
+      {/* shoulder line */}
+      <path d="M82,66 Q110,56 138,66" fill="none" stroke={stroke('shoulders')} strokeWidth={width('shoulders')} strokeLinecap="round" />
+      {/* spine reference line */}
+      <line x1="110" y1="62" x2="110" y2="124" stroke={stroke('spine')} strokeWidth={width('spine')} strokeDasharray="2 4" strokeLinecap="round" />
       {/* arms + hands */}
-      <line x1="36" y1="52" x2="26" y2="86" stroke={stroke('hands')} strokeWidth={width('hands')} strokeLinecap="round" />
-      <line x1="84" y1="52" x2="94" y2="86" stroke={stroke('hands')} strokeWidth={width('hands')} strokeLinecap="round" />
-      <circle cx="25" cy="90" r="3.4" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} />
-      <circle cx="95" cy="90" r="3.4" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} />
+      <path d="M86,68 C78,84 74,100 76,116" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} strokeLinecap="round" />
+      <path d="M134,68 C142,84 146,100 144,116" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} strokeLinecap="round" />
+      <circle cx="76" cy="120" r="4.2" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} />
+      <circle cx="144" cy="120" r="4.2" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} />
       {/* pelvis */}
-      <line x1="40" y1="96" x2="80" y2="96" stroke={stroke('pelvis')} strokeWidth={width('pelvis')} strokeLinecap="round" />
-      {/* legs + feet */}
-      <line x1="48" y1="96" x2="42" y2="148" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
-      <line x1="72" y1="96" x2="78" y2="148" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
-      <ellipse cx="36" cy="152" rx="8" ry="3.4" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} />
-      <ellipse cx="84" cy="152" rx="8" ry="3.4" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} />
+      <line x1="90" y1="126" x2="130" y2="126" stroke={stroke('pelvis')} strokeWidth={width('pelvis')} strokeLinecap="round" />
+      {legs}
+    </g>
+  );
+}
+
+function SemiSupineFigure({ stroke, width, fillTorso, t }) {
+  return (
+    <g>
+      {/* support cushion under the head */}
+      <rect x="4" y="88" width="26" height="7" rx="3" fill={t.isDark ? '#2A2A33' : '#E7E4EE'} opacity="0.7" />
+      {/* torso, lying horizontal */}
+      <path
+        d="M66,84 C90,78 116,78 130,86 L130,108 C116,116 90,116 66,110 Z"
+        fill={fillTorso}
+      />
+      {/* head */}
+      <circle cx="30" cy="96" r="17" fill={fillTorso} stroke={stroke('head')} strokeWidth={width('head')} />
+      {/* neck */}
+      <line x1="47" y1="96" x2="58" y2="94" stroke={stroke('neck')} strokeWidth={width('neck')} strokeLinecap="round" />
+      {/* shoulder line */}
+      <path d="M64,82 Q66,96 64,112" fill="none" stroke={stroke('shoulders')} strokeWidth={width('shoulders')} strokeLinecap="round" />
+      {/* spine reference line */}
+      <line x1="62" y1="97" x2="128" y2="97" stroke={stroke('spine')} strokeWidth={width('spine')} strokeDasharray="2 4" strokeLinecap="round" />
+      {/* arms resting on torso */}
+      <circle cx="90" cy="80" r="4" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} />
+      <circle cx="104" cy="80" r="4" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} />
+      {/* pelvis */}
+      <line x1="128" y1="88" x2="128" y2="108" stroke={stroke('pelvis')} strokeWidth={width('pelvis')} strokeLinecap="round" />
+      {/* bent knees, feet flat on the floor */}
+      <path d="M130,90 C146,80 158,80 158,66" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
+      <path d="M158,66 C158,90 158,112 158,130" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
+      <ellipse cx="158" cy="133" rx="3.6" ry="9" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} />
+      <path d="M128,106 C142,100 150,100 150,88" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" opacity="0.6" />
+      {/* floor line */}
+      <line x1="0" y1="133" x2="200" y2="133" stroke={t.isDark ? '#3A3A44' : '#DCD9E4'} strokeWidth="1.5" />
+    </g>
+  );
+}
+
+// Highlight ring + small anatomy label for whichever regions are active,
+// positioned using the pose's point map.
+function RegionHighlights({ pose, activeRegions, t }) {
+  const points = POSE_POINTS[pose] || {};
+  const accent = '#A78BFA';
+  return (
+    <>
+      {activeRegions.filter(r => points[r]).map(r => (
+        <g key={r}>
+          <circle cx={points[r].x} cy={points[r].y} r="5.5" fill="none" stroke={accent} strokeWidth="1.4" opacity="0.85">
+            <animate attributeName="r" values="5.5;8;5.5" dur="2.8s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.85;0.25;0.85" dur="2.8s" repeatCount="indefinite" />
+          </circle>
+        </g>
+      ))}
+    </>
+  );
+}
+
+// Direction-of-movement arrows with a short instructional label, shown only
+// while a stage is actively applying a direction (explore/transfer).
+function DirectionArrows({ pose, activeRegions, t }) {
+  const points = POSE_POINTS[pose] || {};
+  const accent = '#A78BFA';
+  return (
+    <>
+      {activeRegions.filter(r => points[r] && REGION_ARROW_META[r]).map(r => {
+        const p = points[r];
+        const meta = REGION_ARROW_META[r];
+        if (meta.mirror) {
+          const dx = meta.dx || 0;
+          return (
+            <g key={r}>
+              <line x1={p.x - 8} y1={p.y} x2={p.x - 8 - dx} y2={p.y} stroke={accent} strokeWidth="1.6" markerEnd="url(#atArrowhead)" />
+              <line x1={p.x + 8} y1={p.y} x2={p.x + 8 + dx} y2={p.y} stroke={accent} strokeWidth="1.6" markerEnd="url(#atArrowhead)" />
+              <text x={p.x} y={p.y + 18} textAnchor="middle" fontSize="7.5" fill={t.isDark ? '#C9B8F5' : '#7C5CC9'}>{meta.label}</text>
+            </g>
+          );
+        }
+        const dy = meta.dy || 0;
+        return (
+          <g key={r}>
+            <line x1={p.x} y1={p.y - 6} x2={p.x} y2={p.y - 6 + dy} stroke={accent} strokeWidth="1.6" markerEnd="url(#atArrowhead)" />
+            <text x={p.x} y={p.y - 6 + dy + (dy < 0 ? -4 : 12)} textAnchor="middle" fontSize="7.5" fill={t.isDark ? '#C9B8F5' : '#7C5CC9'}>{meta.label}</text>
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
+// The main illustration: picks the right body position for the exercise
+// (`pose`), highlights whichever regions the current stage/response is
+// about, and — only while a direction is actively being applied — overlays
+// labeled arrows showing which way each part is meant to move.
+function AwarenessIllustration({ pose = 'sitting', activeRegions = [], showArrows = false, t }) {
+  const lineColor = t.isDark ? '#5A5966' : '#C7C3D6';
+  const accentFill = t.isDark ? 'rgba(167,139,250,0.16)' : 'rgba(167,139,250,0.12)';
+  const baseFill = t.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.55)';
+  const on = (region) => activeRegions.includes(region);
+  const stroke = (region) => (on(region) ? '#A78BFA' : lineColor);
+  const width = (region) => (on(region) ? '2.4' : '1.8');
+
+  let body;
+  if (pose === 'semiSupine') {
+    body = <SemiSupineFigure stroke={stroke} width={width} fillTorso={baseFill} t={t} />;
+  } else if (pose === 'sitToStand') {
+    body = (
+      <>
+        <HumanFigure dx={-90} opacity={0.32} seated stroke={stroke} width={width} fillTorso={baseFill} t={t} />
+        <HumanFigure dx={0} opacity={1} stroke={stroke} width={width} fillTorso={accentFill} t={t} />
+        <path d="M40,150 C70,168 120,168 150,150" fill="none" stroke="#A78BFA" strokeWidth="1.6" strokeDasharray="3 4" markerEnd="url(#atArrowhead)" />
+        <text x="42" y="188" fontSize="8" fill={t.isDark ? '#9C9AA8' : '#8B889A'}>Start</text>
+        <text x="146" y="188" fontSize="8" fill={t.isDark ? '#9C9AA8' : '#8B889A'}>End</text>
+      </>
+    );
+  } else {
+    body = (
+      <>
+        <HumanFigure dx={0} seated={pose === 'sitting'} stroke={stroke} width={width} fillTorso={baseFill} t={t} />
+        {pose === 'sway' && (
+          <>
+            <path d="M60,136 C48,132 48,142 38,140" fill="none" stroke="#A78BFA" strokeWidth="1.4" opacity="0.6" markerEnd="url(#atArrowhead)" />
+            <path d="M160,136 C172,132 172,142 182,140" fill="none" stroke="#A78BFA" strokeWidth="1.4" opacity="0.6" markerEnd="url(#atArrowhead)" />
+          </>
+        )}
+        <line x1="20" y1="183" x2="200" y2="183" stroke={t.isDark ? '#3A3A44' : '#DCD9E4'} strokeWidth="1.5" />
+      </>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 220 195" className="relative w-56 h-48">
+      <ArrowDefs />
+      {body}
+      <RegionHighlights pose={pose} activeRegions={activeRegions} t={t} />
+      {showArrows && <DirectionArrows pose={pose} activeRegions={activeRegions} t={t} />}
     </svg>
   );
 }
 
-function speak(text) {
+function speak(text, onEnd) {
   try {
-    if (!('speechSynthesis' in window)) return;
+    if (!('speechSynthesis' in window)) { if (onEnd) onEnd(); return; }
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 0.9;
     u.pitch = 1;
     u.volume = 0.8;
+    if (onEnd) { u.onend = onEnd; u.onerror = onEnd; }
     window.speechSynthesis.speak(u);
-  } catch (e) { /* speech unavailable — safe to ignore */ }
+  } catch (e) { if (onEnd) onEnd(); /* speech unavailable — safe to ignore */ }
 }
 
 function vibrate(pattern) {
@@ -1277,7 +1883,7 @@ function ConceptBadge({ conceptId, t }) {
   );
 }
 
-function AwarenessLibrary({ moodCategory, savedEntries, level, setLevel, audio, fadeOutEnabled, setFadeOutEnabled, onSelect, onExit, nav, t }) {
+function SessionIntro({ moodCategory, sessionQueue, activeTags, savedEntries, level, setLevel, handsFree, setHandsFree, audio, fadeOutEnabled, setFadeOutEnabled, onStart, onExit, nav, t }) {
   const category = MOOD_CATEGORIES.find(c => c.id === moodCategory);
   const lastEntry = savedEntries && savedEntries[0];
   const lastTension = lastEntry && lastEntry.tensionAreas && lastEntry.tensionAreas[0];
@@ -1285,8 +1891,11 @@ function AwarenessLibrary({ moodCategory, savedEntries, level, setLevel, audio, 
 
   let opening = "Let's take this gently and see how your body is doing today.";
   if (category && category.id !== 'calm') {
-    opening = `You mentioned feeling ${category.label.split(' / ')[0].toLowerCase()} today — we'll go slowly.`;
+    opening = `You mentioned feeling ${category.label.split(' / ')[0].toLowerCase()} today — here's a session shaped around that.`;
   }
+
+  const exercises = sessionQueue.map(id => AT_EXERCISES.find(e => e.id === id)).filter(Boolean);
+  const totalMinutes = Math.max(4, exercises.length * 3);
 
   return (
     <Shell t={t}>
@@ -1302,17 +1911,22 @@ function AwarenessLibrary({ moodCategory, savedEntries, level, setLevel, audio, 
         )}
       </div>
 
-      <div className="flex flex-col gap-2.5 mb-6">
-        {AT_EXERCISES.map(ex => (
-          <button
-            key={ex.id}
-            onClick={() => onSelect(ex.id)}
-            className={`text-left rounded-2xl p-4 transition hover:-translate-y-0.5 ${t.card}`}
-          >
-            <p className={`text-sm ${t.heading}`}>{ex.name}</p>
-            <p className={`text-xs mt-0.5 ${t.textSoft}`}>{ex.blurb}</p>
-          </button>
-        ))}
+      <div className={`rounded-3xl p-5 mb-4 ${t.card}`}>
+        <p className={`text-xs uppercase tracking-wider mb-3 ${t.textSoft}`}>Your session · ~{totalMinutes} min</p>
+        <div className="flex flex-col gap-3">
+          {exercises.map((ex, i) => (
+            <div key={ex.id} className="flex items-start gap-3">
+              <span className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] ${t.purple}`}>{i + 1}</span>
+              <div>
+                <p className={`text-sm ${t.heading}`}>
+                  {ex.name}
+                  {ex.movement && <span className={`ml-1.5 text-[10px] uppercase tracking-wide ${t.textSoft}`}>· movement</span>}
+                </p>
+                <p className={`text-xs ${t.textSoft}`}>{ex.blurb}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className={`rounded-3xl p-6 mb-4 ${t.card}`}>
@@ -1320,60 +1934,169 @@ function AwarenessLibrary({ moodCategory, savedEntries, level, setLevel, audio, 
         <GuideLevelPicker level={level} setLevel={setLevel} t={t} />
       </div>
 
+      <div className={`rounded-2xl p-4 mb-4 ${t.card}`}>
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input type="checkbox" checked={handsFree} onChange={(e) => setHandsFree(e.target.checked)} className="mt-1 accent-sky-300" />
+          <span>
+            <span className={`text-sm block ${t.heading}`}>Hands-free session</span>
+            <span className={`text-[11px] ${t.textSoft}`}>Your guide speaks each step and listens for your voice, so you can set your phone down.</span>
+          </span>
+        </label>
+      </div>
+
       <MusicPlayer audio={audio} fadeOutEnabled={fadeOutEnabled} setFadeOutEnabled={setFadeOutEnabled} t={t} />
 
       <div className={`rounded-2xl p-4 mt-4 mb-6 flex gap-2.5 ${t.cardAlt}`}>
         <ShieldAlert size={14} className={`flex-shrink-0 mt-0.5 ${t.textSoft}`} strokeWidth={1.7} />
         <p className={`text-[11px] leading-relaxed ${t.textSoft}`}>
-          This is an educational wellness tool, guided one step at a time — it isn't a substitute for a qualified,
-          hands-on Alexander Technique teacher. If anything feels painful, stop and rest.
+          This is an educational wellness tool — it isn't a substitute for a qualified, hands-on Alexander Technique
+          teacher. If anything feels uncomfortable, we'll pause and offer a gentler option.
         </p>
       </div>
 
-      <button onClick={onExit} className={`flex items-center gap-1 text-sm ${t.textSoft} hover:opacity-70 transition`}>
-        <ChevronLeft size={15} /> Back
-      </button>
+      <div className="flex justify-center mb-4">
+        <button onClick={onStart} className={`px-8 py-3.5 rounded-full text-sm tracking-wide transition flex items-center gap-2 ${t.button}`}>
+          Start session <ChevronRight size={15} strokeWidth={1.8} />
+        </button>
+      </div>
+
+      <div className="flex justify-center">
+        <button onClick={onExit} className={`flex items-center gap-1 text-sm ${t.textSoft} hover:opacity-70 transition`}>
+          <ChevronLeft size={15} /> Back
+        </button>
+      </div>
     </Shell>
   );
 }
 
-function AwarenessStage({ exercise, stageId, stageIndex, level, onNextStage, onExit, t }) {
+function SessionPauseScreen({ onResumeGently, onEnd, t }) {
+  return (
+    <div className="flex flex-col items-center text-center gap-4 py-8" style={{ animation: 'screenIn 650ms cubic-bezier(0.16,1,0.3,1)' }}>
+      <div className={`w-16 h-16 rounded-full flex items-center justify-center ${t.purple}`}>
+        <ShieldAlert size={20} strokeWidth={1.7} />
+      </div>
+      <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }} className={`text-xl font-light ${t.heading}`}>Let's pause here.</h2>
+      <p className={`text-sm max-w-xs ${t.text}`}>
+        It sounds like something didn't feel right. Nothing in this practice should ever cause pain or dizziness —
+        if it did, please stop and check in with a doctor or a qualified Alexander Technique teacher.
+      </p>
+      <div className="flex flex-col gap-2 w-full max-w-xs">
+        <button onClick={onResumeGently} className={`px-5 py-3 rounded-full text-sm transition ${t.buttonGhost}`}>I'm okay — continue more gently</button>
+        <button onClick={onEnd} className={`px-6 py-3 rounded-full text-sm transition ${t.button}`}>End session here</button>
+      </div>
+    </div>
+  );
+}
+
+function AwarenessStage({ exercise, stageId, stageIndex, sessionPosition, level, handsFree, onAdvance, onExit, t }) {
   const stage = exercise.stages[stageId];
   const meta = AT_STAGE_META[stageId];
+  const question = stage.questions[0];
   const [responseText, setResponseText] = useState('');
   const [guideReply, setGuideReply] = useState(null);
   const [thinking, setThinking] = useState(false);
   const [voiceOn, setVoiceOn] = useState(true);
+  const [autoStatus, setAutoStatus] = useState('idle'); // idle | speaking | listening | thinking | speaking-reply | waiting
   const stt = useSpeechToText();
+  const advancedRef = useRef(false);
 
-  useEffect(() => {
-    setResponseText('');
-    setGuideReply(null);
-    if (voiceOn) speak(stage.prompt);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exercise.id, stageId]);
+  function doAdvance(signal) {
+    if (advancedRef.current) return;
+    advancedRef.current = true;
+    onAdvance(signal);
+  }
 
   async function send() {
     if (!responseText.trim() || thinking) return;
+    const text = responseText.trim();
+    const signal = detectBranchSignal(text);
     setThinking(true);
+    setAutoStatus('thinking');
     try {
-      const reply = await askGuide(responseText.trim(), exercise, stageId, level);
+      const reply = await askGuide(text, exercise, stageId, level);
       setGuideReply(reply);
-      if (voiceOn) speak(reply);
+      setThinking(false);
+      if (voiceOn) {
+        setAutoStatus('speaking-reply');
+        speak(reply, () => {
+          if (handsFree) {
+            setAutoStatus('waiting');
+            setTimeout(() => doAdvance(signal), 2500);
+          }
+        });
+      } else if (handsFree) {
+        setAutoStatus('waiting');
+        setTimeout(() => doAdvance(signal), 3000);
+      }
     } catch (e) {
+      setThinking(false);
       setGuideReply("I couldn't reach your guide just now — take your time, and continue whenever you're ready.");
+      if (handsFree) setTimeout(() => doAdvance(signal), 3000);
     }
-    setThinking(false);
   }
+
+  // Drive the hands-free flow: speak the prompt, then either listen for a
+  // spoken response or, if speech isn't available, just wait — so the whole
+  // stage can play out without anyone touching the screen.
+  useEffect(() => {
+    let cancelled = false;
+    let listenTimer = null;
+    let waitTimer = null;
+
+    setResponseText('');
+    setGuideReply(null);
+    advancedRef.current = false;
+    setAutoStatus(handsFree ? 'speaking' : 'idle');
+
+    function startListenOrWait() {
+      if (cancelled) return;
+      if (handsFree && stt.supported) {
+        setAutoStatus('listening');
+        stt.start((text) => setResponseText(text));
+        listenTimer = setTimeout(() => { stt.stop(); }, 14000);
+      } else if (handsFree) {
+        setAutoStatus('waiting');
+        waitTimer = setTimeout(() => { if (!advancedRef.current) doAdvance(null); }, 9000);
+      }
+    }
+
+    if (voiceOn) {
+      speak(`${stage.prompt} ${question}`, () => { if (!cancelled) startListenOrWait(); });
+    } else if (handsFree) {
+      startListenOrWait();
+    }
+
+    return () => {
+      cancelled = true;
+      if (listenTimer) clearTimeout(listenTimer);
+      if (waitTimer) clearTimeout(waitTimer);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+      stt.stop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exercise.id, stageId, handsFree]);
+
+  // When hands-free listening stops (silence, or our timeout), act on
+  // whatever was captured — send it if there's something, otherwise move on.
+  useEffect(() => {
+    if (!handsFree || autoStatus !== 'listening' || stt.listening) return;
+    if (responseText.trim()) send();
+    else if (!advancedRef.current) doAdvance(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stt.listening]);
 
   function toggleMic() {
     if (stt.listening) { stt.stop(); return; }
     stt.start((text) => setResponseText(text));
   }
 
+  function manualNext() {
+    doAdvance(detectBranchSignal(responseText));
+  }
+
   const detected = detectRegions(guideReply);
   const activeRegions = detected.length > 0 ? detected : stage.regions;
-  const question = stage.questions[0];
+  const showArrows = stageId === 'explore' || stageId === 'transfer';
 
   return (
     <div style={{ animation: 'screenIn 650ms cubic-bezier(0.16,1,0.3,1)' }}>
@@ -1382,7 +2105,7 @@ function AwarenessStage({ exercise, stageId, stageIndex, level, onNextStage, onE
           <ChevronLeft size={15} />
         </button>
         <span className={`text-xs tabular-nums tracking-wide ${t.textSoft}`}>
-          {String(stageIndex + 1).padStart(2, '0')} / {String(AT_STAGES.length).padStart(2, '0')}
+          Exercise {sessionPosition.exerciseIndex + 1}/{sessionPosition.totalExercises} · {String(stageIndex + 1).padStart(2, '0')}/{String(AT_STAGES.length).padStart(2, '0')}
         </span>
       </div>
       <p className={`text-center text-[11px] uppercase tracking-[0.3em] mb-1 ${t.textSoft}`}>{meta.label}</p>
@@ -1394,12 +2117,23 @@ function AwarenessStage({ exercise, stageId, stageIndex, level, onNextStage, onE
             className="absolute rounded-full blur-2xl opacity-50"
             style={{ width: 190, height: 190, background: `radial-gradient(circle, ${BRAND.mistBlue}, transparent 70%)`, animation: 'orbPulse 5s ease-in-out infinite' }}
           />
-          <BodyAwarenessDiagram activeRegions={activeRegions} t={t} />
+          <AwarenessIllustration pose={exercise.pose} activeRegions={activeRegions} showArrows={showArrows} t={t} />
         </div>
 
         <p className={`text-sm max-w-xs ${t.text}`}>{stage.prompt}</p>
 
-        {!guideReply && (
+        {handsFree && (
+          <p className={`text-[11px] flex items-center gap-1.5 ${t.textSoft}`}>
+            {autoStatus === 'listening' && <Mic size={11} strokeWidth={1.8} />}
+            {autoStatus === 'speaking' && 'Speaking…'}
+            {autoStatus === 'listening' && "Listening — talk whenever you're ready"}
+            {autoStatus === 'thinking' && 'Your guide is listening…'}
+            {autoStatus === 'speaking-reply' && 'Speaking…'}
+            {autoStatus === 'waiting' && 'Continuing shortly…'}
+          </p>
+        )}
+
+        {!guideReply && !handsFree && (
           <>
             <p className={`text-sm ${t.heading}`}>{question}</p>
             <div className="w-full max-w-xs flex items-center gap-2">
@@ -1427,10 +2161,16 @@ function AwarenessStage({ exercise, stageId, stageIndex, level, onNextStage, onE
               </button>
             </div>
             {thinking && <p className={`text-xs ${t.textSoft}`}>Your guide is listening…</p>}
-            <button onClick={onNextStage} className={`text-[11px] ${t.textSoft} hover:opacity-70 transition`}>
+            <button onClick={manualNext} className={`text-[11px] ${t.textSoft} hover:opacity-70 transition`}>
               Skip — continue without answering
             </button>
           </>
+        )}
+
+        {!guideReply && handsFree && (
+          <button onClick={manualNext} className={`text-[11px] ${t.textSoft} hover:opacity-70 transition`}>
+            Skip ahead
+          </button>
         )}
 
         {guideReply && (
@@ -1439,14 +2179,16 @@ function AwarenessStage({ exercise, stageId, stageIndex, level, onNextStage, onE
               <MessageCircle size={14} className={`flex-shrink-0 mt-0.5 ${t.textSoft}`} strokeWidth={1.7} />
               <p className={`text-sm ${t.text}`}>{guideReply}</p>
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => {setGuideReply(null); setResponseText('');}} className={`px-4 py-2.5 rounded-full text-xs transition ${t.buttonGhost}`}>
-                Say more
-              </button>
-              <button onClick={onNextStage} className={`px-4 py-2.5 rounded-full text-xs transition ${t.button}`}>
-                Continue
-              </button>
-            </div>
+            {!handsFree && (
+              <div className="flex gap-2">
+                <button onClick={() => {setGuideReply(null); setResponseText('');}} className={`px-4 py-2.5 rounded-full text-xs transition ${t.buttonGhost}`}>
+                  Say more
+                </button>
+                <button onClick={manualNext} className={`px-4 py-2.5 rounded-full text-xs transition ${t.button}`}>
+                  Continue
+                </button>
+              </div>
+            )}
           </>
         )}
 
@@ -1463,7 +2205,7 @@ function AwarenessStage({ exercise, stageId, stageIndex, level, onNextStage, onE
   );
 }
 
-function LuminousGuideComplete({ exercise, onAnother, onContinue, t }) {
+function LuminousGuideComplete({ exerciseCount, onAnother, onContinue, t }) {
   return (
     <div className="flex flex-col items-center text-center gap-4 py-8" style={{ animation: 'screenIn 650ms cubic-bezier(0.16,1,0.3,1)' }}>
       <div className={`w-16 h-16 rounded-full flex items-center justify-center ${t.purple}`}>
@@ -1471,48 +2213,121 @@ function LuminousGuideComplete({ exercise, onAnother, onContinue, t }) {
       </div>
       <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }} className={`text-xl font-light ${t.heading}`}>Well done.</h2>
       <p className={`text-sm max-w-xs ${t.text}`}>
-        You moved through {exercise ? exercise.name.toLowerCase() : 'this exercise'} from noticing all the way to transfer —
-        carrying a little more awareness with you. Trusting this process, rather than chasing a "correct" result, is the whole practice.
+        You moved through {exerciseCount > 1 ? `${exerciseCount} exercises` : 'this session'} — from noticing all the way to
+        transfer, carrying a little more awareness with you. Trusting this process, rather than chasing a "correct" result, is the whole practice.
       </p>
       <div className="flex gap-2">
-        <button onClick={onAnother} className={`px-5 py-3 rounded-full text-sm transition ${t.buttonGhost}`}>Try another exercise</button>
+        <button onClick={onAnother} className={`px-5 py-3 rounded-full text-sm transition ${t.buttonGhost}`}>Try a new session</button>
         <button onClick={onContinue} className={`px-6 py-3 rounded-full text-sm transition ${t.button}`}>Continue to reflection</button>
       </div>
     </div>
   );
 }
 
-function LuminousGuideFlow({ moodCategory, savedEntries, onFinish, onExit, onExerciseComplete, nav, t }) {
-  const [phase, setPhase] = useState('library'); // library | stage | complete
-  const [exerciseId, setExerciseId] = useState(null);
-  const [level, setLevel] = useState('balanced');
+function LuminousGuideFlow({ moodCategory, tensionAreas, need, quizAnswers, savedEntries, onFinish, onExit, onExerciseComplete, nav, t }) {
+  const activeTags = deriveActiveTags({ moodCategory, tensionAreas, need, feeling: quizAnswers && quizAnswers.feeling });
+
+  const [phase, setPhase] = useState('intro'); // intro | stage | pause | complete
+  const [sessionQueue, setSessionQueue] = useState(() => buildSession(activeTags, []));
+  const [exerciseIndex, setExerciseIndex] = useState(0);
   const [stageIndex, setStageIndex] = useState(0);
+  const [level, setLevel] = useState('balanced');
+  const [handsFree, setHandsFree] = useState(false);
   const [fadeOutEnabled, setFadeOutEnabled] = useState(true);
   const audio = useAmbientAudio();
 
-  const exercise = AT_EXERCISES.find(e => e.id === exerciseId);
+  // Refine the session once we know what the previous session covered, so
+  // back-to-back sessions don't hand someone the same fixed sequence.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await storage.get('luminous_last_session');
+        const history = res && res.value ? JSON.parse(res.value) : [];
+        setSessionQueue(q => (history.length ? buildSession(activeTags, history) : q));
+      } catch (e) { /* history unavailable — the initial session stands */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const exercise = AT_EXERCISES.find(e => e.id === sessionQueue[exerciseIndex]);
 
   function endMusic() {
     if (fadeOutEnabled && audio.playingId) audio.fadeOut();
     else audio.stop();
   }
-  function selectExercise(id) {
-    setExerciseId(id);
+
+  function startSession() {
+    storage.set('luminous_last_session', JSON.stringify(sessionQueue)).catch(() => {});
+    setExerciseIndex(0);
     setStageIndex(0);
     setPhase('stage');
   }
-  function nextStage() {
-    if (stageIndex + 1 >= AT_STAGES.length) {
-      if (onExerciseComplete) onExerciseComplete(exerciseId);
+
+  function completeExercise() {
+    if (onExerciseComplete) onExerciseComplete(exercise.id);
+    if (exerciseIndex + 1 >= sessionQueue.length) {
       setPhase('complete');
+    } else {
+      setExerciseIndex(i => i + 1);
+      setStageIndex(0);
+    }
+  }
+
+  // Pulls a matching exercise to right after the current one — reordering
+  // one already queued later, or borrowing an unused one from the database.
+  function insertNext(tag) {
+    setSessionQueue(q => {
+      const laterMatch = q.findIndex((id, i) => i > exerciseIndex && (AT_EXERCISES.find(e => e.id === id) || {}).tags.includes(tag));
+      if (laterMatch > exerciseIndex + 1) {
+        const next = [...q];
+        const [item] = next.splice(laterMatch, 1);
+        next.splice(exerciseIndex + 1, 0, item);
+        return next;
+      }
+      if (laterMatch === -1) {
+        const used = new Set(q);
+        const candidate = AT_EXERCISES.find(e => e.tags.includes(tag) && !used.has(e.id));
+        if (candidate) {
+          const next = [...q];
+          next.splice(exerciseIndex + 1, 0, candidate.id);
+          return next;
+        }
+      }
+      return q;
+    });
+  }
+
+  // The branching logic: what someone says mid-exercise can redirect the
+  // rest of the session — tension → gentler guidance, restlessness →
+  // movement, low energy → gentle activation, discomfort → pause, and
+  // feeling calmer → skip ahead rather than dwelling on every stage.
+  function advance(signal) {
+    if (signal === 'pain') {
+      setPhase('pause');
       return;
     }
-    setStageIndex(i => i + 1);
+    if (signal === 'tense') setLevel('gentle');
+    if (signal === 'restless') insertNext('restless');
+    if (signal === 'tired') insertNext('lowEnergy');
+
+    const nextStage = signal === 'calm' ? AT_STAGES.length - 1 : stageIndex + 1;
+    if (nextStage >= AT_STAGES.length) completeExercise();
+    else setStageIndex(nextStage);
   }
-  function anotherExercise() {
-    setExerciseId(null);
+
+  function resumeGently() {
+    setLevel('gentle');
+    setPhase('stage');
+  }
+  function endSessionEarly() {
+    endMusic();
+    onFinish();
+  }
+  function tryNewSession() {
+    setSessionQueue(buildSession(activeTags, sessionQueue));
+    setExerciseIndex(0);
     setStageIndex(0);
-    setPhase('library');
+    setPhase('intro');
   }
   function exitAll() {
     endMusic();
@@ -1524,42 +2339,51 @@ function LuminousGuideFlow({ moodCategory, savedEntries, onFinish, onExit, onExe
   }
 
   let content;
-  if (phase === 'library') {
+  if (phase === 'intro') {
     content = (
-      <AwarenessLibrary
-        moodCategory={moodCategory} savedEntries={savedEntries}
+      <SessionIntro
+        moodCategory={moodCategory} sessionQueue={sessionQueue} activeTags={activeTags} savedEntries={savedEntries}
         level={level} setLevel={setLevel}
+        handsFree={handsFree} setHandsFree={setHandsFree}
         audio={audio} fadeOutEnabled={fadeOutEnabled} setFadeOutEnabled={setFadeOutEnabled}
-        onSelect={selectExercise}
+        onStart={startSession}
         onExit={exitAll}
         nav={nav}
         t={t}
       />
     );
-  } else if (phase === 'stage') {
+  } else if (phase === 'stage' && exercise) {
     content = (
       <Shell t={t}>
         <AwarenessStage
-          key={exerciseId + '-' + stageIndex}
+          key={exercise.id + '-' + stageIndex}
           exercise={exercise}
           stageId={AT_STAGES[stageIndex]}
           stageIndex={stageIndex}
+          sessionPosition={{ exerciseIndex, totalExercises: sessionQueue.length }}
           level={level}
-          onNextStage={nextStage}
+          handsFree={handsFree}
+          onAdvance={advance}
           onExit={exitAll}
           t={t}
         />
       </Shell>
     );
+  } else if (phase === 'pause') {
+    content = (
+      <Shell t={t}>
+        <SessionPauseScreen onResumeGently={resumeGently} onEnd={endSessionEarly} t={t} />
+      </Shell>
+    );
   } else {
     content = (
       <Shell t={t}>
-        <LuminousGuideComplete exercise={exercise} onAnother={anotherExercise} onContinue={finishToReflection} t={t} />
+        <LuminousGuideComplete exerciseCount={sessionQueue.length} onAnother={tryNewSession} onContinue={finishToReflection} t={t} />
       </Shell>
     );
   }
 
-  return <div key={phase + '-' + exerciseId} className="luminous-screen">{content}</div>;
+  return <div key={phase + '-' + exerciseIndex + '-' + stageIndex} className="luminous-screen">{content}</div>;
 }
 
 /* =========================================================================
@@ -2182,13 +3006,13 @@ function SplashScreen({ onBegin, t }) {
           <LuminousMark size={140} />
         </div>
       </div>
-      <p className={`text-3xl sm:text-5xl mb-3 tracking-[0.25em] ${t.heading}`} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>LUMINOUS</p>
-      <p className={`text-lg sm:text-2xl mb-8 ${t.textSoft}`}>Find a little space to breathe.</p>
+      <p className={`text-2xl sm:text-4xl mb-3 tracking-[0.25em] ${t.heading}`} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>LUMINOUS</p>
+      <p className={`text-base sm:text-xl mb-8 ${t.textSoft}`}>Find a little space to breathe.</p>
       <div className="w-8 h-px mb-8" style={{ backgroundColor: BRAND.lightGray, opacity: 0.6 }} />
-      <p className={`text-base sm:text-xl leading-relaxed mb-12 ${t.textSoft}`}>A moment for you.<br />A lifetime of clarity.</p>
+      <p className={`text-sm sm:text-lg leading-relaxed mb-12 ${t.textSoft}`}>A moment for you.<br />A lifetime of clarity.</p>
       <button
         onClick={onBegin}
-        className={`px-9 sm:px-12 py-3.5 sm:py-4.5 rounded-full text-sm sm:text-lg tracking-wide transition-all duration-300 ${t.button}`}
+        className={`px-9 sm:px-11 py-3.5 sm:py-4 rounded-full text-sm sm:text-base tracking-wide transition-all duration-300 ${t.button}`}
       >
         Begin
       </button>
@@ -2347,6 +3171,9 @@ export default function LuminousApp() {
         {screen === 'guide' && (
           <LuminousGuideFlow
             moodCategory={moodCategory}
+            tensionAreas={tensionAreas}
+            need={need}
+            quizAnswers={quizAnswers}
             savedEntries={savedEntries}
             onFinish={() => setScreen('postMood')}
             onExit={() => setScreen('intro')}
