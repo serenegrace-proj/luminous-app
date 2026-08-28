@@ -1435,9 +1435,10 @@ function ProgressRing({ fraction, size = 176, strokeW = 5, t }) {
 /* -------- instructional illustrations: body positioning, anatomy labels,
    and direction-of-movement arrows, keyed by each exercise's `pose` -------- */
 
-// Where each labeled body part sits within a given pose's 0 0 220 190
-// viewBox — used to place highlight rings, part labels, and direction
-// arrows on the right spot of whichever illustration is on screen.
+// Where each labeled body part sits within a given pose's illustration —
+// used to place highlight blobs, leader-line labels, and direction arrows
+// on the right spot of whichever illustration is on screen. Coordinates are
+// in that pose's own POSE_VIEWBOX entry below.
 const POSE_POINTS = {
   sitting: {
     head: { x: 110, y: 30 }, neck: { x: 110, y: 52 }, shoulders: { x: 110, y: 64 },
@@ -1459,12 +1460,53 @@ const POSE_POINTS = {
     spine: { x: 105, y: 96 }, pelvis: { x: 130, y: 96 },
     hands: { x: 85, y: 78 }, feet: { x: 150, y: 130 },
   },
+  // The ghost "start" figure sits at dx=-55, the solid "current" figure at
+  // dx=+55 — these points describe the solid one, since that's what the
+  // highlights and labels are ever about.
   sitToStand: {
-    head: { x: 170, y: 30 }, neck: { x: 170, y: 52 }, shoulders: { x: 170, y: 64 },
-    spine: { x: 170, y: 105 }, pelvis: { x: 170, y: 136 },
-    hands: { x: 140, y: 96 }, feet: { x: 170, y: 178 },
+    head: { x: 165, y: 30 }, neck: { x: 165, y: 52 }, shoulders: { x: 165, y: 64 },
+    spine: { x: 165, y: 105 }, pelvis: { x: 165, y: 136 },
+    hands: { x: 131, y: 96 }, feet: { x: 165, y: 178 },
   },
 };
+
+// Horizontal center of each pose's figure, used only to decide which side a
+// label reads toward.
+const POSE_CENTER_X = { sitting: 110, standing: 110, sway: 110, sitToStand: 165 };
+
+// Upright poses read their labels out to the left/right, the way a printed
+// chart annotates a standing figure. The lying-down pose is already close
+// to full-width, so its labels read above/below instead — matching how the
+// same kind of chart annotates a reclining figure.
+const POSE_LABEL_ORIENTATION = {
+  sitting: 'horizontal', standing: 'horizontal', sway: 'horizontal',
+  sitToStand: 'horizontal', semiSupine: 'vertical',
+};
+
+// Per-pose viewBox — wide enough on the side labels read toward (or tall
+// enough above/below, for the lying-down pose) without moving any of the
+// figure geometry itself, which all stays in its original coordinates.
+const POSE_VIEWBOX = {
+  sitting: '-40 -6 300 206',
+  standing: '-40 -6 300 206',
+  sway: '-40 -6 300 206',
+  semiSupine: '-4 -2 208 199',
+  sitToStand: '-40 -6 340 206',
+};
+
+// Where a region's highlight blob and leader-line label should land,
+// relative to its own point — horizontal poses read the label out to
+// whichever side isn't crowded; the lying-down pose reads it above or below.
+function labelAnchor(pose, point, index) {
+  if (POSE_LABEL_ORIENTATION[pose] === 'vertical') {
+    const above = index % 2 === 0;
+    return { x: point.x, y: point.y + (above ? -30 : 30), dir: above ? 'up' : 'down' };
+  }
+  const centerX = POSE_CENTER_X[pose] ?? 110;
+  const dx = point.x - centerX;
+  const left = Math.abs(dx) > 10 ? dx < 0 : index % 2 === 1;
+  return { x: point.x + (left ? -58 : 58), y: point.y, dir: left ? 'left' : 'right' };
+}
 
 // What each region does when a person actively applies a direction — only
 // shown during the 'explore'/'transfer' stages, since 'notice' explicitly
@@ -1484,125 +1526,154 @@ const REGION_PART_LABEL = {
   pelvis: 'Pelvis', hands: 'Hands', feet: 'Feet',
 };
 
-function ArrowDefs() {
+// Muted, translucent highlight colors per body region — mirrors a printed
+// anatomy chart's soft color-coded focus areas. These are only ever used for
+// the highlight blobs, never for the line art itself.
+const REGION_HIGHLIGHT_COLOR = {
+  head: '#8FBF9F', neck: '#8FBF9F', shoulders: '#E4CE86', spine: '#93BEE3',
+  pelvis: '#C6A6D8', hands: '#EFAFC4', feet: '#EFAFC4',
+};
+
+function ArrowDefs({ ink }) {
   return (
     <defs>
-      <marker id="atArrowhead" markerWidth="7" markerHeight="7" refX="3.2" refY="3.5" orient="auto">
-        <path d="M0,0 L7,3.5 L0,7 Z" fill="#A78BFA" />
+      <marker id="atArrowhead" markerWidth="6" markerHeight="6" refX="2.8" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill={ink} />
       </marker>
     </defs>
   );
 }
 
-// A soft, filled silhouette — head, neck, shoulder line, torso, arms, legs —
-// shared by every standing/sitting pose so anatomy reads consistently across
-// exercises. `seated` bends the legs and adds a chair; `dx`/`opacity` let
-// SitToStandFigure place a faded "start" copy alongside a solid "end" one.
-function HumanFigure({ dx = 0, opacity = 1, seated = false, stroke, width, fillTorso, t }) {
+// A single-weight, unfilled line figure — head, neck, shoulder line, torso
+// contour, arms, legs — shared by every standing/sitting pose so anatomy
+// reads consistently across exercises, the way one hand-drawn figure style
+// repeats across a printed exercise chart. `seated` bends the legs and adds
+// a chair; `dx`/`opacity` let the sit-to-stand illustration place a faint
+// "start" copy alongside a solid "current" one.
+function HumanFigure({ dx = 0, opacity = 1, seated = false, ink, t }) {
+  const strokeProps = { stroke: ink, strokeWidth: 1.4, fill: 'none', strokeLinecap: 'round' };
   const legs = seated ? (
     <>
-      <path d="M96,126 C88,134 84,146 84,178" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
-      <path d="M124,126 C132,134 136,146 136,178" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
-      <ellipse cx="80" cy="180" rx="10" ry="3.6" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} />
-      <ellipse cx="140" cy="180" rx="10" ry="3.6" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} />
+      <path d="M96,126 C88,134 84,146 84,178" {...strokeProps} />
+      <path d="M124,126 C132,134 136,146 136,178" {...strokeProps} />
+      <ellipse cx="80" cy="180" rx="10" ry="3.6" {...strokeProps} />
+      <ellipse cx="140" cy="180" rx="10" ry="3.6" {...strokeProps} />
       {/* chair seat + backrest */}
       <rect x="66" y="124" width="88" height="7" rx="2" fill={t.isDark ? '#2A2A33' : '#E7E4EE'} opacity="0.7" />
       <rect x="140" y="58" width="8" height="72" rx="4" fill={t.isDark ? '#2A2A33' : '#E7E4EE'} opacity="0.5" />
     </>
   ) : (
     <>
-      <line x1="98" y1="136" x2="92" y2="178" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
-      <line x1="122" y1="136" x2="128" y2="178" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
-      <ellipse cx="88" cy="182" rx="10" ry="3.6" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} />
-      <ellipse cx="132" cy="182" rx="10" ry="3.6" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} />
+      <line x1="98" y1="136" x2="92" y2="178" {...strokeProps} />
+      <line x1="122" y1="136" x2="128" y2="178" {...strokeProps} />
+      <ellipse cx="88" cy="182" rx="10" ry="3.6" {...strokeProps} />
+      <ellipse cx="132" cy="182" rx="10" ry="3.6" {...strokeProps} />
     </>
   );
 
   return (
     <g transform={`translate(${dx},0)`} opacity={opacity}>
-      {/* torso silhouette */}
-      <path
-        d="M84,64 C78,86 80,112 88,126 L132,126 C140,112 142,86 136,64 C124,56 96,56 84,64 Z"
-        fill={fillTorso}
-      />
+      {/* torso contour — outline only, no fill */}
+      <path d="M84,64 C78,86 80,112 88,126 L132,126 C140,112 142,86 136,64 C124,56 96,56 84,64 Z" {...strokeProps} />
       {/* head */}
-      <circle cx="110" cy="30" r="17" fill={fillTorso} stroke={stroke('head')} strokeWidth={width('head')} />
+      <circle cx="110" cy="30" r="17" {...strokeProps} />
       {/* neck */}
-      <line x1="110" y1="47" x2="110" y2="60" stroke={stroke('neck')} strokeWidth={width('neck')} strokeLinecap="round" />
+      <line x1="110" y1="47" x2="110" y2="60" {...strokeProps} />
       {/* shoulder line */}
-      <path d="M82,66 Q110,56 138,66" fill="none" stroke={stroke('shoulders')} strokeWidth={width('shoulders')} strokeLinecap="round" />
+      <path d="M82,66 Q110,56 138,66" {...strokeProps} />
       {/* spine reference line */}
-      <line x1="110" y1="62" x2="110" y2="124" stroke={stroke('spine')} strokeWidth={width('spine')} strokeDasharray="2 4" strokeLinecap="round" />
+      <line x1="110" y1="62" x2="110" y2="124" stroke={ink} strokeWidth="1" strokeDasharray="2 4" strokeLinecap="round" opacity="0.6" />
       {/* arms + hands */}
-      <path d="M86,68 C78,84 74,100 76,116" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} strokeLinecap="round" />
-      <path d="M134,68 C142,84 146,100 144,116" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} strokeLinecap="round" />
-      <circle cx="76" cy="120" r="4.2" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} />
-      <circle cx="144" cy="120" r="4.2" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} />
+      <path d="M86,68 C78,84 74,100 76,116" {...strokeProps} />
+      <path d="M134,68 C142,84 146,100 144,116" {...strokeProps} />
+      <circle cx="76" cy="120" r="4.2" {...strokeProps} />
+      <circle cx="144" cy="120" r="4.2" {...strokeProps} />
       {/* pelvis */}
-      <line x1="90" y1="126" x2="130" y2="126" stroke={stroke('pelvis')} strokeWidth={width('pelvis')} strokeLinecap="round" />
+      <line x1="90" y1="126" x2="130" y2="126" {...strokeProps} />
       {legs}
     </g>
   );
 }
 
-function SemiSupineFigure({ stroke, width, fillTorso, t }) {
+function SemiSupineFigure({ ink, t }) {
+  const strokeProps = { stroke: ink, strokeWidth: 1.4, fill: 'none', strokeLinecap: 'round' };
   return (
     <g>
       {/* support cushion under the head */}
       <rect x="4" y="88" width="26" height="7" rx="3" fill={t.isDark ? '#2A2A33' : '#E7E4EE'} opacity="0.7" />
-      {/* torso, lying horizontal */}
-      <path
-        d="M66,84 C90,78 116,78 130,86 L130,108 C116,116 90,116 66,110 Z"
-        fill={fillTorso}
-      />
+      {/* torso, lying horizontal — outline only */}
+      <path d="M66,84 C90,78 116,78 130,86 L130,108 C116,116 90,116 66,110 Z" {...strokeProps} />
       {/* head */}
-      <circle cx="30" cy="96" r="17" fill={fillTorso} stroke={stroke('head')} strokeWidth={width('head')} />
+      <circle cx="30" cy="96" r="17" {...strokeProps} />
       {/* neck */}
-      <line x1="47" y1="96" x2="58" y2="94" stroke={stroke('neck')} strokeWidth={width('neck')} strokeLinecap="round" />
+      <line x1="47" y1="96" x2="58" y2="94" {...strokeProps} />
       {/* shoulder line */}
-      <path d="M64,82 Q66,96 64,112" fill="none" stroke={stroke('shoulders')} strokeWidth={width('shoulders')} strokeLinecap="round" />
+      <path d="M64,82 Q66,96 64,112" {...strokeProps} />
       {/* spine reference line */}
-      <line x1="62" y1="97" x2="128" y2="97" stroke={stroke('spine')} strokeWidth={width('spine')} strokeDasharray="2 4" strokeLinecap="round" />
+      <line x1="62" y1="97" x2="128" y2="97" stroke={ink} strokeWidth="1" strokeDasharray="2 4" strokeLinecap="round" opacity="0.6" />
       {/* arms resting on torso */}
-      <circle cx="90" cy="80" r="4" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} />
-      <circle cx="104" cy="80" r="4" fill="none" stroke={stroke('hands')} strokeWidth={width('hands')} />
+      <circle cx="90" cy="80" r="4" {...strokeProps} />
+      <circle cx="104" cy="80" r="4" {...strokeProps} />
       {/* pelvis */}
-      <line x1="128" y1="88" x2="128" y2="108" stroke={stroke('pelvis')} strokeWidth={width('pelvis')} strokeLinecap="round" />
+      <line x1="128" y1="88" x2="128" y2="108" {...strokeProps} />
       {/* bent knees, feet flat on the floor */}
-      <path d="M130,90 C146,80 158,80 158,66" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
-      <path d="M158,66 C158,90 158,112 158,130" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" />
-      <ellipse cx="158" cy="133" rx="3.6" ry="9" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} />
-      <path d="M128,106 C142,100 150,100 150,88" fill="none" stroke={stroke('feet')} strokeWidth={width('feet')} strokeLinecap="round" opacity="0.6" />
+      <path d="M130,90 C146,80 158,80 158,66" {...strokeProps} />
+      <path d="M158,66 C158,90 158,112 158,130" {...strokeProps} />
+      <ellipse cx="158" cy="133" rx="3.6" ry="9" {...strokeProps} />
+      <path d="M128,106 C142,100 150,100 150,88" {...strokeProps} opacity="0.6" />
       {/* floor line */}
       <line x1="0" y1="133" x2="200" y2="133" stroke={t.isDark ? '#3A3A44' : '#DCD9E4'} strokeWidth="1.5" />
     </g>
   );
 }
 
-// Highlight ring + small anatomy label for whichever regions are active,
-// positioned using the pose's point map.
+// A soft translucent highlight blob plus a dot-and-leader-line label for
+// each active region — the same visual language a printed Alexander
+// Technique chart uses for its color-coded focus areas, updating with
+// whichever regions the current stage (or the guide's live reply) is about.
 function RegionHighlights({ pose, activeRegions, t }) {
   const points = POSE_POINTS[pose] || {};
-  const accent = '#A78BFA';
+  const vertical = POSE_LABEL_ORIENTATION[pose] === 'vertical';
+  const ink = t.isDark ? '#8A8794' : '#8B8894';
+  const labelColor = t.isDark ? '#D2CFDA' : '#5B5866';
+  const active = activeRegions.filter(r => points[r]);
+
   return (
     <>
-      {activeRegions.filter(r => points[r]).map(r => (
-        <g key={r}>
-          <circle cx={points[r].x} cy={points[r].y} r="5.5" fill="none" stroke={accent} strokeWidth="1.4" opacity="0.85">
-            <animate attributeName="r" values="5.5;8;5.5" dur="2.8s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.85;0.25;0.85" dur="2.8s" repeatCount="indefinite" />
-          </circle>
-        </g>
-      ))}
+      {active.map((r, i) => {
+        const p = points[r];
+        const a = labelAnchor(pose, p, i);
+        const midX = a.dir === 'left' ? p.x - 20 : a.dir === 'right' ? p.x + 20 : p.x;
+        const midY = a.dir === 'up' ? p.y - 14 : a.dir === 'down' ? p.y + 14 : p.y;
+        const textAnchor = a.dir === 'left' ? 'end' : a.dir === 'right' ? 'start' : 'middle';
+        return (
+          <g key={r}>
+            <ellipse cx={p.x} cy={p.y} rx="13" ry="11" fill={REGION_HIGHLIGHT_COLOR[r] || '#A78BFA'} opacity={t.isDark ? 0.3 : 0.4} />
+            <circle cx={p.x} cy={p.y} r="1.8" fill={ink} />
+            <polyline points={`${p.x},${p.y} ${midX},${midY} ${a.x},${a.y}`} fill="none" stroke={ink} strokeWidth="0.75" opacity="0.6" />
+            <text
+              x={a.x}
+              y={a.y}
+              dominantBaseline={vertical ? 'auto' : 'middle'}
+              textAnchor={textAnchor}
+              fontSize="8"
+              fill={labelColor}
+            >
+              {REGION_PART_LABEL[r]}
+            </text>
+          </g>
+        );
+      })}
     </>
   );
 }
 
-// Direction-of-movement arrows with a short instructional label, shown only
-// while a stage is actively applying a direction (explore/transfer).
+// Subtle direction-of-movement arrows with a short instructional label,
+// shown only while a stage is actively applying a direction (explore/
+// transfer) — muted rather than bold, so they read as a quiet suggestion.
 function DirectionArrows({ pose, activeRegions, t }) {
   const points = POSE_POINTS[pose] || {};
-  const accent = '#A78BFA';
+  const arrowColor = t.isDark ? '#A79BC4' : '#8E7FB0';
   return (
     <>
       {activeRegions.filter(r => points[r] && REGION_ARROW_META[r]).map(r => {
@@ -1612,17 +1683,17 @@ function DirectionArrows({ pose, activeRegions, t }) {
           const dx = meta.dx || 0;
           return (
             <g key={r}>
-              <line x1={p.x - 8} y1={p.y} x2={p.x - 8 - dx} y2={p.y} stroke={accent} strokeWidth="1.6" markerEnd="url(#atArrowhead)" />
-              <line x1={p.x + 8} y1={p.y} x2={p.x + 8 + dx} y2={p.y} stroke={accent} strokeWidth="1.6" markerEnd="url(#atArrowhead)" />
-              <text x={p.x} y={p.y + 18} textAnchor="middle" fontSize="7.5" fill={t.isDark ? '#C9B8F5' : '#7C5CC9'}>{meta.label}</text>
+              <line x1={p.x - 8} y1={p.y} x2={p.x - 8 - dx} y2={p.y} stroke={arrowColor} strokeWidth="1.1" opacity="0.75" markerEnd="url(#atArrowhead)" />
+              <line x1={p.x + 8} y1={p.y} x2={p.x + 8 + dx} y2={p.y} stroke={arrowColor} strokeWidth="1.1" opacity="0.75" markerEnd="url(#atArrowhead)" />
+              <text x={p.x} y={p.y + 20} textAnchor="middle" fontSize="7" fill={arrowColor}>{meta.label}</text>
             </g>
           );
         }
         const dy = meta.dy || 0;
         return (
           <g key={r}>
-            <line x1={p.x} y1={p.y - 6} x2={p.x} y2={p.y - 6 + dy} stroke={accent} strokeWidth="1.6" markerEnd="url(#atArrowhead)" />
-            <text x={p.x} y={p.y - 6 + dy + (dy < 0 ? -4 : 12)} textAnchor="middle" fontSize="7.5" fill={t.isDark ? '#C9B8F5' : '#7C5CC9'}>{meta.label}</text>
+            <line x1={p.x} y1={p.y - 6} x2={p.x} y2={p.y - 6 + dy} stroke={arrowColor} strokeWidth="1.1" opacity="0.75" markerEnd="url(#atArrowhead)" />
+            <text x={p.x} y={p.y - 6 + dy + (dy < 0 ? -4 : 12)} textAnchor="middle" fontSize="7" fill={arrowColor}>{meta.label}</text>
           </g>
         );
       })}
@@ -1633,36 +1704,32 @@ function DirectionArrows({ pose, activeRegions, t }) {
 // The main illustration: picks the right body position for the exercise
 // (`pose`), highlights whichever regions the current stage/response is
 // about, and — only while a direction is actively being applied — overlays
-// labeled arrows showing which way each part is meant to move.
+// muted arrows showing which way each part is meant to move. One consistent
+// thin-line figure style is reused across every pose.
 function AwarenessIllustration({ pose = 'sitting', activeRegions = [], showArrows = false, t }) {
-  const lineColor = t.isDark ? '#5A5966' : '#C7C3D6';
-  const accentFill = t.isDark ? 'rgba(167,139,250,0.16)' : 'rgba(167,139,250,0.12)';
-  const baseFill = t.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.55)';
-  const on = (region) => activeRegions.includes(region);
-  const stroke = (region) => (on(region) ? '#A78BFA' : lineColor);
-  const width = (region) => (on(region) ? '2.4' : '1.8');
+  const ink = t.isDark ? '#79768A' : '#A7A2B8';
 
   let body;
   if (pose === 'semiSupine') {
-    body = <SemiSupineFigure stroke={stroke} width={width} fillTorso={baseFill} t={t} />;
+    body = <SemiSupineFigure ink={ink} t={t} />;
   } else if (pose === 'sitToStand') {
     body = (
       <>
-        <HumanFigure dx={-90} opacity={0.32} seated stroke={stroke} width={width} fillTorso={baseFill} t={t} />
-        <HumanFigure dx={0} opacity={1} stroke={stroke} width={width} fillTorso={accentFill} t={t} />
-        <path d="M40,150 C70,168 120,168 150,150" fill="none" stroke="#A78BFA" strokeWidth="1.6" strokeDasharray="3 4" markerEnd="url(#atArrowhead)" />
-        <text x="42" y="188" fontSize="8" fill={t.isDark ? '#9C9AA8' : '#8B889A'}>Start</text>
-        <text x="146" y="188" fontSize="8" fill={t.isDark ? '#9C9AA8' : '#8B889A'}>End</text>
+        <HumanFigure dx={-55} opacity={0.35} seated ink={ink} t={t} />
+        <HumanFigure dx={55} opacity={1} ink={ink} t={t} />
+        <path d="M75,150 C100,168 140,168 165,150" fill="none" stroke={ink} strokeWidth="1.1" strokeDasharray="3 4" opacity="0.7" markerEnd="url(#atArrowhead)" />
+        <text x="46" y="188" fontSize="8" fill={ink}>Start</text>
+        <text x="196" y="188" fontSize="8" fill={ink}>End</text>
       </>
     );
   } else {
     body = (
       <>
-        <HumanFigure dx={0} seated={pose === 'sitting'} stroke={stroke} width={width} fillTorso={baseFill} t={t} />
+        <HumanFigure dx={0} seated={pose === 'sitting'} ink={ink} t={t} />
         {pose === 'sway' && (
           <>
-            <path d="M60,136 C48,132 48,142 38,140" fill="none" stroke="#A78BFA" strokeWidth="1.4" opacity="0.6" markerEnd="url(#atArrowhead)" />
-            <path d="M160,136 C172,132 172,142 182,140" fill="none" stroke="#A78BFA" strokeWidth="1.4" opacity="0.6" markerEnd="url(#atArrowhead)" />
+            <path d="M60,136 C48,132 48,142 38,140" fill="none" stroke={ink} strokeWidth="1" opacity="0.6" markerEnd="url(#atArrowhead)" />
+            <path d="M160,136 C172,132 172,142 182,140" fill="none" stroke={ink} strokeWidth="1" opacity="0.6" markerEnd="url(#atArrowhead)" />
           </>
         )}
         <line x1="20" y1="183" x2="200" y2="183" stroke={t.isDark ? '#3A3A44' : '#DCD9E4'} strokeWidth="1.5" />
@@ -1671,8 +1738,8 @@ function AwarenessIllustration({ pose = 'sitting', activeRegions = [], showArrow
   }
 
   return (
-    <svg viewBox="0 0 220 195" className="relative w-56 h-48">
-      <ArrowDefs />
+    <svg viewBox={POSE_VIEWBOX[pose] || POSE_VIEWBOX.sitting} className="relative w-64 h-52">
+      <ArrowDefs ink={ink} />
       {body}
       <RegionHighlights pose={pose} activeRegions={activeRegions} t={t} />
       {showArrows && <DirectionArrows pose={pose} activeRegions={activeRegions} t={t} />}
