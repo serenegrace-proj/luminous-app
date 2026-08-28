@@ -6,7 +6,7 @@ import {
   SkipForward, RotateCcw, Vibrate, Wind, Flame, Target, CloudRain, Leaf,
   Check, ArrowUp, ArrowDown, Sparkles, Plus, Minus, X,
   Waves, AlertTriangle, TrendingUp, BarChart3, Home, Music, Tag, History,
-  MessageCircle, Send, ShieldAlert, Compass, Mic,
+  MessageCircle, Send, ShieldAlert, Compass, Mic, Settings, BookOpen,
 } from 'lucide-react';
 
 /* =========================================================================
@@ -644,6 +644,14 @@ const STATE_TAGS = [
   'anxious', 'focusedButTense', 'calm', 'sleep', 'energized',
 ];
 
+// Human-readable labels for the tags above, used by the exercise catalog
+// in Settings.
+const STATE_TAG_LABELS = {
+  tense: 'Tense', overwhelmed: 'Overwhelmed', restless: 'Restless', distracted: 'Distracted',
+  tired: 'Tired', lowEnergy: 'Low energy', anxious: 'Anxious', focusedButTense: 'Focused, but tense',
+  calm: 'Calm', sleep: 'Sleep', energized: 'Energized',
+};
+
 const FEELING_TAG_MAP = {
   calm: ['calm'], stressed: ['tense'], overwhelmed: ['overwhelmed', 'anxious'],
   tired: ['tired', 'lowEnergy'], unfocused: ['distracted'], energized: ['energized'],
@@ -978,12 +986,12 @@ function ProgressDots({ step, t }) {
   );
 }
 
-function NavBar({ active, onHome, onReset, onFocus, onStats, isDark, setIsDark, t }) {
+function NavBar({ active, onHome, onReset, onFocus, onSettings, isDark, setIsDark, t }) {
   const items = [
     { id: 'home', label: 'Home', icon: Home, action: onHome },
     { id: 'reset', label: 'Reset', icon: Leaf, action: onReset },
     { id: 'focus', label: 'Focus', icon: Target, action: onFocus },
-    { id: 'stats', label: 'Stats', icon: BarChart3, action: onStats },
+    { id: 'settings', label: 'Settings', icon: Settings, action: onSettings },
   ];
   return (
     <div className="fixed bottom-0 inset-x-0 z-30 flex justify-center pb-6 px-5 pointer-events-none">
@@ -1269,10 +1277,10 @@ function greeting() {
   return 'Good evening.';
 }
 
-function IntroScreen({ onBegin, onFocus, onStats, onQuickReset, t, isDark, setIsDark, historyCount, streak, lastMood, todayCount }) {
+function IntroScreen({ onBegin, onFocus, onSettings, onQuickReset, t, isDark, setIsDark, historyCount, streak, lastMood, todayCount }) {
   return (
     <Shell t={t}>
-      <NavBar active="home" onHome={() => {}} onReset={onBegin} onFocus={onFocus} onStats={onStats} isDark={isDark} setIsDark={setIsDark} t={t} />
+      <NavBar active="home" onHome={() => {}} onReset={onBegin} onFocus={onFocus} onSettings={onSettings} isDark={isDark} setIsDark={setIsDark} t={t} />
 
       <div className="flex flex-col items-center text-center gap-6" style={{ animation: 'screenIn 700ms cubic-bezier(0.16,1,0.3,1)' }}>
         <LuminousMark size={72} />
@@ -2517,7 +2525,35 @@ function entryPostScore(entry) {
   return null;
 }
 
-function StatsScreen({ savedEntries, nav, isDark, setIsDark, t }) {
+// A read-only browse of every exercise in the Luminous Guide library —
+// sessions are still assembled automatically from these based on a
+// check-in, this view just lets someone see the whole catalog.
+function ExerciseCatalog({ t }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <p className={`text-[11px] text-center mb-1 ${t.textSoft}`}>
+        Every exercise the Luminous Guide can draw from. Sessions are put together automatically based on your check-in.
+      </p>
+      {AT_EXERCISES.map(ex => (
+        <div key={ex.id} className={`rounded-2xl p-4 ${t.card}`}>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <p className={`text-sm ${t.heading}`}>{ex.name}</p>
+            {ex.movement && <span className={`text-[10px] uppercase tracking-wide flex-shrink-0 ${t.textSoft}`}>Movement</span>}
+          </div>
+          <p className={`text-xs mb-2.5 ${t.textSoft}`}>{ex.blurb}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {ex.tags.map(tag => (
+              <span key={tag} className={`text-[10px] px-2 py-1 rounded-full ${t.purple}`}>{STATE_TAG_LABELS[tag] || tag}</span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SettingsScreen({ savedEntries, nav, isDark, setIsDark, t }) {
+  const [view, setView] = useState('stats'); // stats | catalog
   const [studyLog, setStudyLog] = useState([]);
   const [exerciseCounts, setExerciseCounts] = useState({});
   const [showAllReflections, setShowAllReflections] = useState(false);
@@ -2562,13 +2598,40 @@ function StatsScreen({ savedEntries, nav, isDark, setIsDark, t }) {
 
   return (
     <Shell t={t}>
-      {nav && <NavBar active="stats" {...nav} t={t} />}
+      {nav && <NavBar active="settings" {...nav} t={t} />}
 
       <div className="mb-6 text-center">
-        <p className={`text-xs uppercase tracking-wider mb-2 ${t.textSoft}`}>Stats</p>
-        <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }} className={`text-xl font-light ${t.heading}`}>Your patterns over time</h2>
+        <p className={`text-xs uppercase tracking-wider mb-2 ${t.textSoft}`}>Settings</p>
+        <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }} className={`text-xl font-light ${t.heading}`}>
+          {view === 'stats' ? 'Your patterns over time' : 'Exercise catalog'}
+        </h2>
       </div>
 
+      <div className="flex justify-center mb-6">
+        <div className={`inline-flex gap-1 p-1 rounded-full ${t.cardAlt}`}>
+          <button
+            onClick={() => setView('stats')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs transition-all duration-300 ${
+              view === 'stats' ? 'bg-sky-100/80 text-sky-700 shadow-sm' : t.textSoft
+            }`}
+          >
+            <BarChart3 size={12} strokeWidth={1.8} /> Stats
+          </button>
+          <button
+            onClick={() => setView('catalog')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs transition-all duration-300 ${
+              view === 'catalog' ? 'bg-sky-100/80 text-sky-700 shadow-sm' : t.textSoft
+            }`}
+          >
+            <BookOpen size={12} strokeWidth={1.8} /> Exercises
+          </button>
+        </div>
+      </div>
+
+      {view === 'catalog' && <ExerciseCatalog t={t} />}
+
+      {view === 'stats' && (
+      <>
       {latest && (latestPreCategory || latestPostLevel !== null) && (
         <div className={`rounded-3xl p-6 mb-5 ${t.card}`}>
           <p className={`text-xs uppercase tracking-wider mb-4 text-center ${t.textSoft}`}>Before → Session → After</p>
@@ -2644,6 +2707,8 @@ function StatsScreen({ savedEntries, nav, isDark, setIsDark, t }) {
           </div>
         )}
       </div>
+      </>
+      )}
     </Shell>
   );
 }
@@ -3112,7 +3177,7 @@ export default function LuminousApp() {
     onHome: () => setScreen('intro'),
     onReset: () => setScreen('preMood'),
     onFocus: () => setScreen('pomodoro'),
-    onStats: () => setScreen('stats'),
+    onSettings: () => setScreen('settings'),
     isDark, setIsDark,
   };
 
@@ -3146,7 +3211,7 @@ export default function LuminousApp() {
           <IntroScreen
             onBegin={() => setScreen('preMood')}
             onFocus={() => setScreen('pomodoro')}
-            onStats={() => setScreen('stats')}
+            onSettings={() => setScreen('settings')}
             onQuickReset={() => setScreen('guide')}
             t={t} isDark={isDark} setIsDark={setIsDark}
             historyCount={savedEntries.length}
@@ -3202,8 +3267,8 @@ export default function LuminousApp() {
           <PomodoroFlow t={t} onExit={resetAll} nav={nav} />
         )}
 
-        {screen === 'stats' && (
-          <StatsScreen savedEntries={savedEntries} nav={nav} isDark={isDark} setIsDark={setIsDark} t={t} />
+        {screen === 'settings' && (
+          <SettingsScreen savedEntries={savedEntries} nav={nav} isDark={isDark} setIsDark={setIsDark} t={t} />
         )}
       </div>
     </div>
