@@ -919,7 +919,23 @@ function AmbientField({ isDark }) {
 const LOGO_SRC = `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.png`;
 
 /* -------- the Luminous mark: the brand logo, used wherever the mark appears -------- */
-function LuminousMark({ size = 140 }) {
+function LuminousMark({ size = 140, t }) {
+  // A blurred, slightly larger duplicate of the exact same artwork sits
+  // behind the crisp mark, so the logo's own colors soften out into the
+  // page rather than ending in a hard circular edge — a quiet aura, not a
+  // recolored glow. A radial-gradient mask forces that outer edge all the
+  // way to fully transparent (blur alone still leaves a faint ring at a
+  // reasonable, non-spread-out size), so it genuinely dissolves into
+  // whatever's behind it — cream page or dark background alike — rather
+  // than reading as a separate glow sitting on top. Scaled to size so it
+  // stays subtle at every size the mark appears at. The mark itself is
+  // pale, so the same aura opacity reads as a much brighter halo against a
+  // dark background than a light one — toned down for dark mode so it
+  // still feels like a gentle fade rather than a glow sitting on top.
+  const auraSize = size * 1.7;
+  const auraBlur = size * 0.14;
+  const auraMask = 'radial-gradient(circle, #000 30%, transparent 72%)';
+  const auraOpacity = t && t.isDark ? 0.32 : 0.5;
   return (
     <div
       className="relative"
@@ -928,10 +944,28 @@ function LuminousMark({ size = 140 }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={LOGO_SRC}
+        alt=""
+        aria-hidden="true"
+        width={640}
+        height={640}
+        className="absolute top-1/2 left-1/2 select-none pointer-events-none"
+        style={{
+          width: auraSize, height: auraSize,
+          transform: 'translate(-50%, -50%)',
+          filter: `blur(${auraBlur}px)`,
+          opacity: auraOpacity,
+          WebkitMaskImage: auraMask,
+          maskImage: auraMask,
+        }}
+        draggable={false}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={LOGO_SRC}
         alt="Luminous"
         width={640}
         height={640}
-        className="w-full h-full object-contain select-none"
+        className="relative w-full h-full object-contain select-none"
         draggable={false}
       />
     </div>
@@ -1280,7 +1314,7 @@ function IntroScreen({ onBegin, onFocus, onSettings, onQuickReset, t, isDark, se
       <NavBar active="home" onHome={() => {}} onReset={onBegin} onFocus={onFocus} onSettings={onSettings} isDark={isDark} setIsDark={setIsDark} t={t} />
 
       <div className="flex flex-col items-center text-center gap-6" style={{ animation: 'screenIn 700ms cubic-bezier(0.16,1,0.3,1)' }}>
-        <LuminousMark size={72} />
+        <LuminousMark size={72} t={t} />
         <div>
           <h1 className={`text-2xl font-light mb-1 ${t.heading}`} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>{greeting()}</h1>
           <p className={`text-sm ${t.textSoft}`}>Take a moment for yourself.</p>
@@ -2938,7 +2972,7 @@ function StudyReflectScreen({ studyMin, rounds, goal, mood, setMood, focusRating
   return (
     <Shell t={t}>
       <div className="flex flex-col items-center text-center gap-3 mb-8">
-        <LuminousMark size={56} />
+        <LuminousMark size={56} t={t} />
         <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }} className={`text-xl font-light ${t.heading}`}>
           Well done — you focused for {studyMin * rounds} minute{studyMin * rounds === 1 ? '' : 's'}
           {rounds > 1 ? ` across ${rounds} rounds` : ''}.
@@ -3132,7 +3166,7 @@ function SplashScreen({ onBegin, t }) {
           style={{ background: `conic-gradient(from 90deg, ${BRAND.sageGreen}, ${BRAND.sageFog}, ${BRAND.mistBlue}, ${BRAND.sageGreen})`, animation: 'orbSpin 24s linear infinite reverse' }}
         />
         <div style={{ animation: 'orbPulse 6s ease-in-out infinite' }}>
-          <LuminousMark size={140} />
+          <LuminousMark size={140} t={t} />
         </div>
       </div>
       <p className={`text-2xl sm:text-4xl mb-3 tracking-[0.25em] ${t.heading}`} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>LUMINOUS</p>
