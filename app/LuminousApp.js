@@ -912,30 +912,27 @@ function AmbientField({ isDark }) {
   );
 }
 
-/* -------- the Luminous mark: soft layered bloom, used wherever the logo appears -------- */
+// public/ assets aren't automatically basePath-prefixed for plain <img>
+// tags (only next/image / next/link are) — NEXT_PUBLIC_BASE_PATH is set in
+// next.config.mjs specifically so this resolves correctly under the
+// project's GitHub Pages subpath.
+const LOGO_SRC = `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.png`;
+
+/* -------- the Luminous mark: the brand logo, used wherever the mark appears -------- */
 function LuminousMark({ size = 140 }) {
-  const petals = [
-    { color: BRAND.mistBlue, opacity: 0.75, scale: 1, rotate: 0 },
-    { color: BRAND.sageGreen, opacity: 0.7, scale: 0.86, rotate: 40 },
-    { color: BRAND.sageFog, opacity: 0.8, scale: 0.7, rotate: 80 },
-    { color: '#FFFFFF', opacity: 0.9, scale: 0.42, rotate: 0 },
-  ];
   return (
-    <div className="relative" style={{ width: size, height: size }}>
-      {petals.map((p, i) => (
-        <div
-          key={i}
-          className="absolute inset-0 rounded-full blur-md"
-          style={{
-            background: `radial-gradient(circle at 35% 30%, ${p.color}, transparent 72%)`,
-            opacity: p.opacity,
-            transform: `scale(${p.scale}) rotate(${p.rotate}deg)`,
-          }}
-        />
-      ))}
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{ background: `radial-gradient(circle at 50% 45%, rgba(255,255,255,0.95), transparent 55%)` }}
+    <div
+      className="relative"
+      style={{ width: size, height: size, animation: 'logoFadeIn 1000ms cubic-bezier(0.16,1,0.3,1)' }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={LOGO_SRC}
+        alt="Luminous"
+        width={640}
+        height={640}
+        className="w-full h-full object-contain select-none"
+        draggable={false}
       />
     </div>
   );
@@ -3257,6 +3254,7 @@ export default function LuminousApp() {
     <div style={{ fontFamily: "'Satoshi', 'Inter', system-ui, sans-serif", backgroundColor: t.bgColor }} className="relative min-h-screen transition-colors duration-700">
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes logoFadeIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
         @keyframes screenIn { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes orbSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes orbPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.045); } }
