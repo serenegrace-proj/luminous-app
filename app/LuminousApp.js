@@ -882,23 +882,29 @@ function useBrandFonts() {
 }
 
 /* -------- ambient background: slow drifting brand-color light -------- */
+// Soft, slowly drifting and morphing fields of light — the same fluid,
+// petal-like quality as the Luminous mark, kept far in the background so it
+// reads as depth and atmosphere rather than decoration competing for
+// attention.
 function AmbientField() {
   const blobs = [
-    { top: '-12%', left: '-14%', size: 560, color: 'rgba(207,232,243,0.55)', anim: 'driftA 26s ease-in-out infinite' },
-    { top: '18%', right: '-16%', size: 520, color: 'rgba(216,234,219,0.55)', anim: 'driftB 32s ease-in-out infinite' },
-    { bottom: '-16%', left: '18%', size: 500, color: 'rgba(248,236,224,0.5)', anim: 'driftC 30s ease-in-out infinite' },
+    { top: '-14%', left: '-16%', size: 620, color: 'rgba(207,232,243,0.55)', drift: 'driftA 28s ease-in-out infinite', morph: 'morphA 19s ease-in-out infinite' },
+    { top: '14%', right: '-18%', size: 560, color: 'rgba(216,234,219,0.55)', drift: 'driftB 34s ease-in-out infinite', morph: 'morphB 22s ease-in-out infinite' },
+    { bottom: '-18%', left: '16%', size: 540, color: 'rgba(248,236,224,0.5)', drift: 'driftC 32s ease-in-out infinite', morph: 'morphC 25s ease-in-out infinite' },
+    { top: '38%', left: '38%', size: 380, color: 'rgba(207,232,243,0.3)', drift: 'driftB 30s ease-in-out infinite reverse', morph: 'morphC 20s ease-in-out infinite' },
   ];
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
       {blobs.map((b, i) => (
         <div
           key={i}
-          className="absolute rounded-full blur-3xl"
+          className="absolute blur-3xl"
           style={{
             top: b.top, left: b.left, right: b.right, bottom: b.bottom,
             width: b.size, height: b.size,
+            borderRadius: '46% 54% 62% 38% / 48% 42% 58% 52%',
             background: `radial-gradient(circle, ${b.color}, transparent 70%)`,
-            animation: b.anim,
+            animation: `${b.drift}, ${b.morph}`,
           }}
         />
       ))}
@@ -1443,317 +1449,398 @@ function ProgressRing({ fraction, size = 176, strokeW = 5, t }) {
   );
 }
 
-/* -------- instructional illustrations: body positioning, anatomy labels,
-   and direction-of-movement arrows, keyed by each exercise's `pose` -------- */
+/* -------- instructional illustrations: minimal line-art figures with
+   animated, editorial-style motifs (breath waves, dotted release/lengthen
+   paths, ripples, widening arrows) in place of anatomy labels — one quiet
+   visual language reused across every pose. -------- */
 
-// Where each labeled body part sits within a given pose's illustration —
-// used to place highlight blobs, leader-line labels, and direction arrows
-// on the right spot of whichever illustration is on screen. Coordinates are
-// in that pose's own POSE_VIEWBOX entry below.
-const POSE_POINTS = {
-  sitting: {
-    head: { x: 110, y: 30 }, neck: { x: 110, y: 52 }, shoulders: { x: 110, y: 64 },
-    spine: { x: 110, y: 100 }, pelvis: { x: 110, y: 126 },
-    hands: { x: 76, y: 82 }, feet: { x: 110, y: 178 },
+const ILLUSTRATION_INK = '#4B4652';
+const MOTIF_GREEN = '#8FB79C';  // awareness / lengthen / release
+const MOTIF_BLUE = '#8FAFD6';   // expansion / breath-in / widen
+const MOTIF_PEACH = '#E0B084';  // grounding / settle
+
+// Which motif color a body region reads as, matching the reference chart's
+// three-color legend (awareness=green, expansion=blue, grounding=peach).
+const REGION_MOTIF_COLOR = {
+  head: MOTIF_GREEN, neck: MOTIF_GREEN, spine: MOTIF_GREEN,
+  shoulders: MOTIF_BLUE, hands: MOTIF_BLUE,
+  pelvis: MOTIF_PEACH, feet: MOTIF_PEACH,
+};
+
+// Where each region sits on each base figure, in that figure's own local
+// coordinates (each figure is drawn at the origin; AwarenessIllustration
+// translates/scales the whole group, and these points move with it).
+const FIGURE_POINTS = {
+  bustFront: {
+    head: { x: 100, y: 46 }, neck: { x: 100, y: 78 }, shoulders: { x: 100, y: 98 },
+    spine: { x: 100, y: 150 }, pelvis: { x: 100, y: 196 },
+    hands: { x: 38, y: 168 }, feet: { x: 100, y: 210 },
+  },
+  bustProfile: {
+    head: { x: 92, y: 46 }, neck: { x: 84, y: 76 }, shoulders: { x: 90, y: 90 },
+    spine: { x: 60, y: 140 }, pelvis: { x: 90, y: 196 },
+    hands: { x: 66, y: 172 }, feet: { x: 90, y: 212 },
   },
   standing: {
-    head: { x: 110, y: 30 }, neck: { x: 110, y: 52 }, shoulders: { x: 110, y: 64 },
-    spine: { x: 110, y: 105 }, pelvis: { x: 110, y: 136 },
-    hands: { x: 76, y: 96 }, feet: { x: 110, y: 178 },
-  },
-  sway: {
-    head: { x: 110, y: 30 }, neck: { x: 110, y: 52 }, shoulders: { x: 110, y: 64 },
-    spine: { x: 110, y: 105 }, pelvis: { x: 110, y: 136 },
-    hands: { x: 76, y: 96 }, feet: { x: 110, y: 178 },
+    head: { x: 100, y: 40 }, neck: { x: 98, y: 65 }, shoulders: { x: 97, y: 78 },
+    spine: { x: 74, y: 112 }, pelvis: { x: 97, y: 150 },
+    hands: { x: 68, y: 146 }, feet: { x: 97, y: 242 },
   },
   semiSupine: {
-    head: { x: 30, y: 96 }, neck: { x: 52, y: 96 }, shoulders: { x: 66, y: 96 },
-    spine: { x: 105, y: 96 }, pelvis: { x: 130, y: 96 },
-    hands: { x: 85, y: 78 }, feet: { x: 150, y: 130 },
-  },
-  // The ghost "start" figure sits at dx=-55, the solid "current" figure at
-  // dx=+55 — these points describe the solid one, since that's what the
-  // highlights and labels are ever about.
-  sitToStand: {
-    head: { x: 165, y: 30 }, neck: { x: 165, y: 52 }, shoulders: { x: 165, y: 64 },
-    spine: { x: 165, y: 105 }, pelvis: { x: 165, y: 136 },
-    hands: { x: 131, y: 96 }, feet: { x: 165, y: 178 },
+    head: { x: 36, y: 80 }, neck: { x: 54, y: 78 }, shoulders: { x: 62, y: 76 },
+    spine: { x: 98, y: 80 }, pelvis: { x: 140, y: 80 },
+    hands: { x: 96, y: 62 }, feet: { x: 178, y: 100 },
   },
 };
 
-// Horizontal center of each pose's figure, used only to decide which side a
-// label reads toward.
-const POSE_CENTER_X = { sitting: 110, standing: 110, sway: 110, sitToStand: 165 };
-
-// Upright poses read their labels out to the left/right, the way a printed
-// chart annotates a standing figure. The lying-down pose is already close
-// to full-width, so its labels read above/below instead — matching how the
-// same kind of chart annotates a reclining figure.
-const POSE_LABEL_ORIENTATION = {
-  sitting: 'horizontal', standing: 'horizontal', sway: 'horizontal',
-  sitToStand: 'horizontal', semiSupine: 'vertical',
-};
-
-// Per-pose viewBox — wide enough on the side labels read toward (or tall
-// enough above/below, for the lying-down pose) without moving any of the
-// figure geometry itself, which all stays in its original coordinates.
-const POSE_VIEWBOX = {
-  sitting: '-40 -6 300 206',
-  standing: '-40 -6 300 206',
-  sway: '-40 -6 300 206',
-  semiSupine: '-4 -2 208 199',
-  sitToStand: '-40 -6 340 206',
-};
-
-// Where a region's highlight blob and leader-line label should land,
-// relative to its own point — horizontal poses read the label out to
-// whichever side isn't crowded; the lying-down pose reads it above or below.
-function labelAnchor(pose, point, index) {
-  if (POSE_LABEL_ORIENTATION[pose] === 'vertical') {
-    const above = index % 2 === 0;
-    return { x: point.x, y: point.y + (above ? -30 : 30), dir: above ? 'up' : 'down' };
-  }
-  const centerX = POSE_CENTER_X[pose] ?? 110;
-  const dx = point.x - centerX;
-  const left = Math.abs(dx) > 10 ? dx < 0 : index % 2 === 1;
-  return { x: point.x + (left ? -58 : 58), y: point.y, dir: left ? 'left' : 'right' };
-}
-
-// What each region does when a person actively applies a direction — only
-// shown during the 'explore'/'transfer' stages, since 'notice' explicitly
-// asks people not to change anything yet.
-const REGION_ARROW_META = {
-  head: { dy: -16, label: 'floats up' },
-  neck: { dy: -12, label: 'releases' },
-  shoulders: { dx: 16, mirror: true, label: 'widen' },
-  spine: { dy: -18, label: 'lengthens' },
-  pelvis: { dy: 8, label: 'settles' },
-  hands: { dx: 12, mirror: true, label: 'soften' },
-  feet: { dy: 10, label: 'ground down' },
-};
-
-const REGION_PART_LABEL = {
-  head: 'Head', neck: 'Neck', shoulders: 'Shoulders', spine: 'Spine',
-  pelvis: 'Pelvis', hands: 'Hands', feet: 'Feet',
-};
-
-// Muted, translucent highlight colors per body region — mirrors a printed
-// anatomy chart's soft color-coded focus areas. These are only ever used for
-// the highlight blobs, never for the line art itself.
-const REGION_HIGHLIGHT_COLOR = {
-  head: '#8FBF9F', neck: '#8FBF9F', shoulders: '#E4CE86', spine: '#93BEE3',
-  pelvis: '#C6A6D8', hands: '#EFAFC4', feet: '#EFAFC4',
-};
-
-function ArrowDefs({ ink }) {
+function AuraDefs() {
   return (
     <defs>
-      <marker id="atArrowhead" markerWidth="6" markerHeight="6" refX="2.8" refY="3" orient="auto">
-        <path d="M0,0 L6,3 L0,6 Z" fill={ink} />
-      </marker>
+      <filter id="illustrationSoftBlur" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="1.1" />
+      </filter>
     </defs>
   );
 }
 
-// A single-weight, unfilled line figure — head, neck, shoulder line, torso
-// contour, arms, legs — shared by every standing/sitting pose so anatomy
-// reads consistently across exercises, the way one hand-drawn figure style
-// repeats across a printed exercise chart. `seated` bends the legs and adds
-// a chair; `dx`/`opacity` let the sit-to-stand illustration place a faint
-// "start" copy alongside a solid "current" one.
-function HumanFigure({ dx = 0, opacity = 1, seated = false, ink, t }) {
-  const strokeProps = { stroke: ink, strokeWidth: 1.4, fill: 'none', strokeLinecap: 'round' };
-  const legs = seated ? (
-    <>
-      <path d="M96,126 C88,134 84,146 84,178" {...strokeProps} />
-      <path d="M124,126 C132,134 136,146 136,178" {...strokeProps} />
-      <ellipse cx="80" cy="180" rx="10" ry="3.6" {...strokeProps} />
-      <ellipse cx="140" cy="180" rx="10" ry="3.6" {...strokeProps} />
-      {/* chair seat + backrest */}
-      <rect x="66" y="124" width="88" height="7" rx="2" fill={t.isDark ? '#2A2A33' : '#E7E4EE'} opacity="0.7" />
-      <rect x="140" y="58" width="8" height="72" rx="4" fill={t.isDark ? '#2A2A33' : '#E7E4EE'} opacity="0.5" />
-    </>
-  ) : (
-    <>
-      <line x1="98" y1="136" x2="92" y2="178" {...strokeProps} />
-      <line x1="122" y1="136" x2="128" y2="178" {...strokeProps} />
-      <ellipse cx="88" cy="182" rx="10" ry="3.6" {...strokeProps} />
-      <ellipse cx="132" cy="182" rx="10" ry="3.6" {...strokeProps} />
-    </>
-  );
-
+// A slow-breathing soft glow — general awareness (no direction implied yet),
+// used for notice/investigate/compare, and layered behind the directional
+// motifs during explore/transfer.
+function GlowAura({ cx, cy, r = 30, color, dur = 4.5 }) {
   return (
-    <g transform={`translate(${dx},0)`} opacity={opacity}>
-      {/* torso contour — outline only, no fill */}
-      <path d="M84,64 C78,86 80,112 88,126 L132,126 C140,112 142,86 136,64 C124,56 96,56 84,64 Z" {...strokeProps} />
-      {/* head */}
-      <circle cx="110" cy="30" r="17" {...strokeProps} />
-      {/* neck */}
-      <line x1="110" y1="47" x2="110" y2="60" {...strokeProps} />
-      {/* shoulder line */}
-      <path d="M82,66 Q110,56 138,66" {...strokeProps} />
-      {/* spine reference line */}
-      <line x1="110" y1="62" x2="110" y2="124" stroke={ink} strokeWidth="1" strokeDasharray="2 4" strokeLinecap="round" opacity="0.6" />
-      {/* arms + hands */}
-      <path d="M86,68 C78,84 74,100 76,116" {...strokeProps} />
-      <path d="M134,68 C142,84 146,100 144,116" {...strokeProps} />
-      <circle cx="76" cy="120" r="4.2" {...strokeProps} />
-      <circle cx="144" cy="120" r="4.2" {...strokeProps} />
-      {/* pelvis */}
-      <line x1="90" y1="126" x2="130" y2="126" {...strokeProps} />
+    <circle cx={cx} cy={cy} r={r} fill={color} opacity="0.26" filter="url(#illustrationSoftBlur)">
+      <animate attributeName="r" values={`${r};${r * 1.22};${r}`} dur={`${dur}s`} repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.26;0.12;0.26" dur={`${dur}s`} repeatCount="indefinite" />
+    </circle>
+  );
+}
+
+// A dotted path with a small arrow, gently flowing upward — "lengthen."
+function LengthenPath({ x, yFrom, yTo, color }) {
+  return (
+    <g>
+      <line x1={x} y1={yFrom} x2={x} y2={yTo} stroke={color} strokeWidth="1.6" strokeDasharray="0.5 6" strokeLinecap="round">
+        <animate attributeName="stroke-dashoffset" values="0;-13" dur="2.4s" repeatCount="indefinite" />
+      </line>
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0,6;0,-3;0,6" dur="2.4s" repeatCount="indefinite" />
+        <path d={`M${x - 5},${yTo + 9} L${x},${yTo} L${x + 5},${yTo + 9}`} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+    </g>
+  );
+}
+
+// Two dotted arrows flowing down and out, fading off the edge — "release."
+function ReleaseArrows({ leftX, rightX, yFrom, yTo, color }) {
+  const chevron = (cx, cy, mirror) => (
+    <path d={`M${cx - (mirror ? -5 : 5)},${cy - 7} L${cx},${cy} L${cx + (mirror ? -5 : 5)},${cy - 7}`} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  );
+  return (
+    <g opacity="0.85">
+      <path d={`M${leftX},${yFrom} Q${leftX - 8},${(yFrom + yTo) / 2} ${leftX - 3},${yTo}`} fill="none" stroke={color} strokeWidth="1.4" strokeDasharray="0.5 6" strokeLinecap="round">
+        <animate attributeName="stroke-dashoffset" values="0;-13" dur="2.6s" repeatCount="indefinite" />
+      </path>
+      {chevron(leftX - 3, yTo, false)}
+      <path d={`M${rightX},${yFrom} Q${rightX + 8},${(yFrom + yTo) / 2} ${rightX + 3},${yTo}`} fill="none" stroke={color} strokeWidth="1.4" strokeDasharray="0.5 6" strokeLinecap="round">
+        <animate attributeName="stroke-dashoffset" values="0;-13" dur="2.6s" repeatCount="indefinite" />
+      </path>
+      {chevron(rightX + 3, yTo, true)}
+    </g>
+  );
+}
+
+// Two curved arrows opening outward, like a wing unfolding — "widen."
+function WideningArrows({ cx, cy, spread = 34, color }) {
+  return (
+    <g opacity="0.9">
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0,0;-2,1.5;0,0" dur="2.8s" repeatCount="indefinite" />
+        <path d={`M${cx - 10},${cy} Q${cx - spread * 0.7},${cy + 4} ${cx - spread},${cy + 14}`} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+      </g>
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0,0;2,1.5;0,0" dur="2.8s" repeatCount="indefinite" />
+        <path d={`M${cx + 10},${cy} Q${cx + spread * 0.7},${cy + 4} ${cx + spread},${cy + 14}`} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+      </g>
+    </g>
+  );
+}
+
+// Two flowing waves, breathing in and out — used specifically for
+// breath-focused moments, echoing the reference chart's "Breathe" panel.
+function BreathWaves({ x, y, colorIn, colorOut }) {
+  return (
+    <g>
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0,0;5,0;0,0" dur="3.6s" repeatCount="indefinite" />
+        <path d={`M${x},${y - 9} Q${x + 13},${y - 17} ${x + 26},${y - 9} Q${x + 39},${y - 1} ${x + 52},${y - 9}`} fill="none" stroke={colorIn} strokeWidth="1.6" strokeLinecap="round" opacity="0.9" />
+      </g>
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0,0;-5,0;0,0" dur="3.6s" repeatCount="indefinite" />
+        <path d={`M${x},${y + 9} Q${x + 13},${y + 1} ${x + 26},${y + 9} Q${x + 39},${y + 17} ${x + 52},${y + 9}`} fill="none" stroke={colorOut} strokeWidth="1.6" strokeLinecap="round" opacity="0.9" />
+      </g>
+    </g>
+  );
+}
+
+// Concentric rings expanding and fading outward — "grounding."
+function RippleRings({ cx, cy, color }) {
+  return (
+    <g>
+      {[0, 1, 2].map(i => (
+        <ellipse key={i} cx={cx} cy={cy} rx="12" ry="4.5" fill="none" stroke={color} strokeWidth="1.4">
+          <animate attributeName="rx" values="8;32" dur="3s" begin={`${i * 1}s`} repeatCount="indefinite" />
+          <animate attributeName="ry" values="3;11" dur="3s" begin={`${i * 1}s`} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.65;0" dur="3s" begin={`${i * 1}s`} repeatCount="indefinite" />
+        </ellipse>
+      ))}
+    </g>
+  );
+}
+
+// A soft downward drift — "settle."
+function SettleArrow({ x, y, color }) {
+  return (
+    <g>
+      <animateTransform attributeName="transform" type="translate" values="0,0;0,5;0,0" dur="2.6s" repeatCount="indefinite" />
+      <line x1={x} y1={y - 10} x2={x} y2={y + 5} stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.85" />
+      <path d={`M${x - 4},${y - 2} L${x},${y + 6} L${x + 4},${y - 2}`} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
+    </g>
+  );
+}
+
+// A faint trailing wave behind a step — "move."
+function MotionTrail({ x, y, color }) {
+  return (
+    <path d={`M${x},${y} Q${x - 26},${y - 8} ${x - 52},${y + 3} Q${x - 78},${y + 12} ${x - 104},${y - 2}`} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5">
+      <animate attributeName="opacity" values="0.55;0.15;0.55" dur="3s" repeatCount="indefinite" />
+    </path>
+  );
+}
+
+// -- base figures: single-weight, unfilled outlines, cropped rather than
+// closed off (no chairs, no floor lines, no filled anatomy) --
+
+function BustFront({ ink }) {
+  const p = { stroke: ink, strokeWidth: 1.5, fill: 'none', strokeLinecap: 'round' };
+  return (
+    <g>
+      <circle cx="100" cy="46" r="24" {...p} />
+      <line x1="100" y1="70" x2="100" y2="82" {...p} />
+      <path d="M48,102 Q100,78 152,102" {...p} />
+      <path d="M152,102 C160,124 164,158 164,210" {...p} />
+      <path d="M48,102 C40,124 36,158 36,210" {...p} />
+    </g>
+  );
+}
+
+function BustProfile({ ink }) {
+  const p = { stroke: ink, strokeWidth: 1.5, fill: 'none', strokeLinecap: 'round' };
+  return (
+    <g>
+      <circle cx="92" cy="46" r="24" {...p} />
+      <path d="M114,38 Q126,44 116,54" {...p} />
+      <path d="M78,68 Q72,76 76,86" {...p} />
+      <path d="M62,88 Q52,116 58,146 C62,172 66,196 70,216" {...p} />
+      <path d="M118,92 Q130,110 124,134 C120,162 114,192 108,216" {...p} />
+      <path d="M62,88 Q92,72 118,92" {...p} />
+    </g>
+  );
+}
+
+function StandingFigure({ ink, seated = false, walking = false }) {
+  const p = { stroke: ink, strokeWidth: 1.5, fill: 'none', strokeLinecap: 'round' };
+  let legs;
+  if (seated) {
+    legs = (
+      <>
+        <path d="M80,150 C72,158 66,168 66,180" {...p} />
+        <path d="M66,180 Q78,190 92,184" {...p} />
+        <path d="M114,150 C122,158 126,168 122,180" {...p} />
+        <path d="M122,180 Q112,190 100,186" {...p} />
+      </>
+    );
+  } else if (walking) {
+    legs = (
+      <>
+        <path d="M80,150 C74,172 68,190 56,206" {...p} />
+        <path d="M56,206 Q46,210 36,207" {...p} />
+        <path d="M114,150 C120,168 128,182 132,200" {...p} />
+        <path d="M132,200 Q140,206 150,204" {...p} />
+      </>
+    );
+  } else {
+    legs = (
+      <>
+        <path d="M80,150 C78,180 76,212 78,241" {...p} />
+        <path d="M78,241 Q70,246 61,243" {...p} />
+        <path d="M114,150 C116,180 118,212 116,241" {...p} />
+        <path d="M116,241 Q124,246 133,243" {...p} />
+      </>
+    );
+  }
+  return (
+    <g>
+      <circle cx="100" cy="40" r="19" {...p} />
+      <path d="M118,34 Q128,39 120,47" {...p} />
+      <path d="M97,58 Q95,62 97,68" {...p} />
+      <path d="M78,76 Q68,108 72,148" {...p} />
+      <path d="M116,78 Q128,108 122,148" {...p} />
+      <path d="M78,76 Q100,63 116,78" {...p} />
+      <path d="M74,150 L120,150" {...p} />
+      {!seated && <path d="M76,82 C64,102 60,126 68,148" {...p} />}
       {legs}
     </g>
   );
 }
 
-function SemiSupineFigure({ ink, t }) {
-  const strokeProps = { stroke: ink, strokeWidth: 1.4, fill: 'none', strokeLinecap: 'round' };
+function RecliningFigure({ ink }) {
+  const p = { stroke: ink, strokeWidth: 1.5, fill: 'none', strokeLinecap: 'round' };
   return (
     <g>
-      {/* support cushion under the head */}
-      <rect x="4" y="88" width="26" height="7" rx="3" fill={t.isDark ? '#2A2A33' : '#E7E4EE'} opacity="0.7" />
-      {/* torso, lying horizontal — outline only */}
-      <path d="M66,84 C90,78 116,78 130,86 L130,108 C116,116 90,116 66,110 Z" {...strokeProps} />
-      {/* head */}
-      <circle cx="30" cy="96" r="17" {...strokeProps} />
-      {/* neck */}
-      <line x1="47" y1="96" x2="58" y2="94" {...strokeProps} />
-      {/* shoulder line */}
-      <path d="M64,82 Q66,96 64,112" {...strokeProps} />
-      {/* spine reference line */}
-      <line x1="62" y1="97" x2="128" y2="97" stroke={ink} strokeWidth="1" strokeDasharray="2 4" strokeLinecap="round" opacity="0.6" />
-      {/* arms resting on torso */}
-      <circle cx="90" cy="80" r="4" {...strokeProps} />
-      <circle cx="104" cy="80" r="4" {...strokeProps} />
-      {/* pelvis */}
-      <line x1="128" y1="88" x2="128" y2="108" {...strokeProps} />
-      {/* bent knees, feet flat on the floor */}
-      <path d="M130,90 C146,80 158,80 158,66" {...strokeProps} />
-      <path d="M158,66 C158,90 158,112 158,130" {...strokeProps} />
-      <ellipse cx="158" cy="133" rx="3.6" ry="9" {...strokeProps} />
-      <path d="M128,106 C142,100 150,100 150,88" {...strokeProps} opacity="0.6" />
-      {/* floor line */}
-      <line x1="0" y1="133" x2="200" y2="133" stroke={t.isDark ? '#3A3A44' : '#DCD9E4'} strokeWidth="1.5" />
+      <circle cx="36" cy="80" r="19" {...p} />
+      <path d="M32,60 Q26,68 30,76" {...p} />
+      <path d="M55,72 Q100,62 145,70" {...p} />
+      <path d="M55,88 Q100,98 140,90" {...p} />
+      <path d="M140,84 Q157,66 170,60 Q186,70 180,88 Q178,95 172,98" {...p} />
+      <path d="M172,98 Q182,101 192,97" {...p} />
     </g>
   );
 }
 
-// A soft translucent highlight blob plus a dot-and-leader-line label for
-// each active region — the same visual language a printed Alexander
-// Technique chart uses for its color-coded focus areas, updating with
-// whichever regions the current stage (or the guide's live reply) is about.
-function RegionHighlights({ pose, activeRegions, t }) {
-  const points = POSE_POINTS[pose] || {};
-  const vertical = POSE_LABEL_ORIENTATION[pose] === 'vertical';
-  const ink = t.isDark ? '#8A8794' : '#8B8894';
-  const labelColor = t.isDark ? '#D2CFDA' : '#5B5866';
-  const active = activeRegions.filter(r => points[r]);
-
+// A short cropped ankle + foot, used as its own full illustration when
+// grounding through the feet is the focus — echoes the reference chart's
+// dedicated "Grounding" panel rather than staying attached to a full figure.
+function FootMotif({ ink, color }) {
+  const p = { stroke: ink, strokeWidth: 1.5, fill: 'none', strokeLinecap: 'round' };
   return (
-    <>
-      {active.map((r, i) => {
-        const p = points[r];
-        const a = labelAnchor(pose, p, i);
-        const midX = a.dir === 'left' ? p.x - 20 : a.dir === 'right' ? p.x + 20 : p.x;
-        const midY = a.dir === 'up' ? p.y - 14 : a.dir === 'down' ? p.y + 14 : p.y;
-        const textAnchor = a.dir === 'left' ? 'end' : a.dir === 'right' ? 'start' : 'middle';
-        return (
-          <g key={r}>
-            <ellipse cx={p.x} cy={p.y} rx="13" ry="11" fill={REGION_HIGHLIGHT_COLOR[r] || '#A78BFA'} opacity={t.isDark ? 0.3 : 0.4} />
-            <circle cx={p.x} cy={p.y} r="1.8" fill={ink} />
-            <polyline points={`${p.x},${p.y} ${midX},${midY} ${a.x},${a.y}`} fill="none" stroke={ink} strokeWidth="0.75" opacity="0.6" />
-            <text
-              x={a.x}
-              y={a.y}
-              dominantBaseline={vertical ? 'auto' : 'middle'}
-              textAnchor={textAnchor}
-              fontSize="8"
-              fill={labelColor}
-            >
-              {REGION_PART_LABEL[r]}
-            </text>
-          </g>
-        );
-      })}
-    </>
+    <g transform="translate(20,10)">
+      <path d="M56,0 L52,64" {...p} />
+      <path d="M78,0 L74,60" {...p} />
+      <path d="M52,64 Q44,82 52,94 Q68,106 100,96 Q118,88 114,72 Q108,58 88,58 Q66,58 74,60" {...p} />
+      <RippleRings cx={84} cy={116} color={color} />
+    </g>
   );
 }
 
-// Subtle direction-of-movement arrows with a short instructional label,
-// shown only while a stage is actively applying a direction (explore/
-// transfer) — muted rather than bold, so they read as a quiet suggestion.
-function DirectionArrows({ pose, activeRegions, t }) {
-  const points = POSE_POINTS[pose] || {};
-  const arrowColor = t.isDark ? '#A79BC4' : '#8E7FB0';
-  return (
-    <>
-      {activeRegions.filter(r => points[r] && REGION_ARROW_META[r]).map(r => {
-        const p = points[r];
-        const meta = REGION_ARROW_META[r];
-        if (meta.mirror) {
-          const dx = meta.dx || 0;
-          return (
-            <g key={r}>
-              <line x1={p.x - 8} y1={p.y} x2={p.x - 8 - dx} y2={p.y} stroke={arrowColor} strokeWidth="1.1" opacity="0.75" markerEnd="url(#atArrowhead)" />
-              <line x1={p.x + 8} y1={p.y} x2={p.x + 8 + dx} y2={p.y} stroke={arrowColor} strokeWidth="1.1" opacity="0.75" markerEnd="url(#atArrowhead)" />
-              <text x={p.x} y={p.y + 20} textAnchor="middle" fontSize="7" fill={arrowColor}>{meta.label}</text>
-            </g>
-          );
-        }
-        const dy = meta.dy || 0;
-        return (
-          <g key={r}>
-            <line x1={p.x} y1={p.y - 6} x2={p.x} y2={p.y - 6 + dy} stroke={arrowColor} strokeWidth="1.1" opacity="0.75" markerEnd="url(#atArrowhead)" />
-            <text x={p.x} y={p.y - 6 + dy + (dy < 0 ? -4 : 12)} textAnchor="middle" fontSize="7" fill={arrowColor}>{meta.label}</text>
-          </g>
-        );
-      })}
-    </>
-  );
-}
+// -- assembly: pick a base figure for the pose, then layer the motif that
+// matches whichever region(s) the current stage is about --
 
-// The main illustration: picks the right body position for the exercise
-// (`pose`), highlights whichever regions the current stage/response is
-// about, and — only while a direction is actively being applied — overlays
-// muted arrows showing which way each part is meant to move. One consistent
-// thin-line figure style is reused across every pose.
-function AwarenessIllustration({ pose = 'sitting', activeRegions = [], showArrows = false, t }) {
-  const ink = t.isDark ? '#79768A' : '#A7A2B8';
+function AwarenessIllustration({ pose = 'sitting', activeRegions = [], stageId = 'notice', exercise }) {
+  const regions = activeRegions.filter(r => REGION_MOTIF_COLOR[r]);
+  const directional = stageId === 'explore' || stageId === 'transfer';
+  const isBreathFocus = exercise && exercise.id === 'breathingSpace' && (regions.includes('spine') || regions.includes('shoulders'));
+  const showWalk = exercise && exercise.movement && stageId === 'transfer' && pose !== 'sitToStand';
+  const feetFocus = directional && regions.includes('feet') && pose !== 'semiSupine';
 
-  let body;
-  if (pose === 'semiSupine') {
-    body = <SemiSupineFigure ink={ink} t={t} />;
-  } else if (pose === 'sitToStand') {
-    body = (
-      <>
-        <HumanFigure dx={-55} opacity={0.35} seated ink={ink} t={t} />
-        <HumanFigure dx={55} opacity={1} ink={ink} t={t} />
-        <path d="M75,150 C100,168 140,168 165,150" fill="none" stroke={ink} strokeWidth="1.1" strokeDasharray="3 4" opacity="0.7" markerEnd="url(#atArrowhead)" />
-        <text x="46" y="188" fontSize="8" fill={ink}>Start</text>
-        <text x="196" y="188" fontSize="8" fill={ink}>End</text>
-      </>
-    );
-  } else {
-    body = (
-      <>
-        <HumanFigure dx={0} seated={pose === 'sitting'} ink={ink} t={t} />
-        {pose === 'sway' && (
-          <>
-            <path d="M60,136 C48,132 48,142 38,140" fill="none" stroke={ink} strokeWidth="1" opacity="0.6" markerEnd="url(#atArrowhead)" />
-            <path d="M160,136 C172,132 172,142 182,140" fill="none" stroke={ink} strokeWidth="1" opacity="0.6" markerEnd="url(#atArrowhead)" />
-          </>
-        )}
-        <line x1="20" y1="183" x2="200" y2="183" stroke={t.isDark ? '#3A3A44' : '#DCD9E4'} strokeWidth="1.5" />
-      </>
+  // Grounding gets its own dedicated close-up, matching the reference's
+  // single-subject "Grounding" panel rather than a small foot tucked onto a
+  // full figure.
+  if (feetFocus) {
+    return (
+      <svg viewBox="0 0 160 170" className="relative w-56 h-48">
+        <AuraDefs />
+        <FootMotif ink={ILLUSTRATION_INK} color={MOTIF_PEACH} />
+      </svg>
     );
   }
 
+  let figure;
+  let points;
+  let viewBox;
+
+  if (pose === 'semiSupine') {
+    figure = <RecliningFigure ink={ILLUSTRATION_INK} />;
+    points = FIGURE_POINTS.semiSupine;
+    viewBox = '0 0 210 170';
+  } else if (pose === 'sitToStand') {
+    viewBox = '-30 -6 300 270';
+    figure = (
+      <>
+        <g transform="translate(-10,0) scale(0.72)" opacity="0.4">
+          <StandingFigure ink={ILLUSTRATION_INK} seated />
+        </g>
+        <g transform="translate(90,0)">
+          <StandingFigure ink={ILLUSTRATION_INK} />
+        </g>
+        <path d="M55,150 Q100,190 160,150" fill="none" stroke={ILLUSTRATION_INK} strokeWidth="1.2" strokeDasharray="1 6" opacity="0.6" />
+        <path d="M150,144 L162,150 L149,155" fill="none" stroke={ILLUSTRATION_INK} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
+        <text x="34" y="252" fontSize="9" fill={ILLUSTRATION_INK} opacity="0.65">Start</text>
+        <text x="222" y="252" fontSize="9" fill={ILLUSTRATION_INK} opacity="0.65">End</text>
+      </>
+    );
+    points = { head: { x: 190, y: 40 }, neck: { x: 188, y: 65 }, shoulders: { x: 187, y: 78 }, spine: { x: 164, y: 112 }, pelvis: { x: 187, y: 150 }, hands: { x: 158, y: 146 }, feet: { x: 187, y: 242 } };
+  } else if (showWalk) {
+    figure = (
+      <g>
+        <StandingFigure ink={ILLUSTRATION_INK} walking />
+        <MotionTrail x={56} y={207} color={MOTIF_GREEN} />
+      </g>
+    );
+    points = FIGURE_POINTS.standing;
+    viewBox = '-40 -6 300 270';
+  } else if (pose === 'sitting') {
+    figure = <BustFront ink={ILLUSTRATION_INK} />;
+    points = FIGURE_POINTS.bustFront;
+    viewBox = '0 0 200 220';
+  } else {
+    // standing / sway
+    figure = <StandingFigure ink={ILLUSTRATION_INK} />;
+    points = FIGURE_POINTS.standing;
+    viewBox = '-40 -6 300 270';
+  }
+
   return (
-    <svg viewBox={POSE_VIEWBOX[pose] || POSE_VIEWBOX.sitting} className="relative w-64 h-52">
-      <ArrowDefs ink={ink} />
-      {body}
-      <RegionHighlights pose={pose} activeRegions={activeRegions} t={t} />
-      {showArrows && <DirectionArrows pose={pose} activeRegions={activeRegions} t={t} />}
+    <svg viewBox={viewBox} className="relative w-64 h-56">
+      <AuraDefs />
+      {figure}
+
+      {isBreathFocus ? (
+        <BreathWaves x={points.shoulders.x + 20} y={points.shoulders.y + 10} colorIn={MOTIF_BLUE} colorOut={MOTIF_GREEN} />
+      ) : !directional ? (
+        regions.length > 0 && (() => {
+          const pts = regions.map(r => points[r]).filter(Boolean);
+          const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+          const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+          return <GlowAura cx={cx} cy={cy} r={46} color={REGION_MOTIF_COLOR[regions[0]]} />;
+        })()
+      ) : (
+        <>
+          {/* head/neck/spine share one continuous lengthening path rather
+              than three overlapping dotted lines stacked on top of each other */}
+          {(() => {
+            const lengthenRegions = regions.filter(r => r === 'head' || r === 'neck' || r === 'spine');
+            if (lengthenRegions.length === 0) return null;
+            const pts = lengthenRegions.map(r => points[r]).filter(Boolean);
+            const yTop = Math.min(...pts.map(p => p.y)) - 16;
+            const yBottom = Math.max(...pts.map(p => p.y)) + 14;
+            const x = pts[0].x;
+            return (
+              <g key="lengthen">
+                <GlowAura cx={x} cy={(yTop + yBottom) / 2} r={Math.max(24, (yBottom - yTop) / 2 + 12)} color={MOTIF_GREEN} dur={3.8} />
+                <LengthenPath x={x} yFrom={yBottom} yTo={yTop} color={MOTIF_GREEN} />
+              </g>
+            );
+          })()}
+          {regions.includes('shoulders') && points.shoulders && (
+            <g key="shoulders">
+              <GlowAura cx={points.shoulders.x} cy={points.shoulders.y} r={18} color={MOTIF_BLUE} dur={3.2} />
+              <WideningArrows cx={points.shoulders.x} cy={points.shoulders.y} color={MOTIF_BLUE} />
+            </g>
+          )}
+          {regions.includes('hands') && points.hands && (
+            <g key="hands">
+              <GlowAura cx={points.hands.x} cy={points.hands.y} r={16} color={MOTIF_BLUE} dur={3.2} />
+              <ReleaseArrows leftX={points.hands.x - 10} rightX={points.hands.x + 10} yFrom={points.hands.y - 12} yTo={points.hands.y + 14} color={MOTIF_BLUE} />
+            </g>
+          )}
+          {regions.includes('pelvis') && points.pelvis && (
+            <g key="pelvis">
+              <GlowAura cx={points.pelvis.x} cy={points.pelvis.y} r={16} color={MOTIF_PEACH} dur={3.2} />
+              <SettleArrow x={points.pelvis.x} y={points.pelvis.y} color={MOTIF_PEACH} />
+            </g>
+          )}
+        </>
+      )}
     </svg>
   );
 }
@@ -2182,7 +2269,6 @@ function AwarenessStage({ exercise, stageId, stageIndex, sessionPosition, level,
 
   const detected = detectRegions(guideReply);
   const activeRegions = detected.length > 0 ? detected : stage.regions;
-  const showArrows = stageId === 'explore' || stageId === 'transfer';
 
   return (
     <div style={{ animation: 'screenIn 650ms cubic-bezier(0.16,1,0.3,1)' }}>
@@ -2203,7 +2289,7 @@ function AwarenessStage({ exercise, stageId, stageIndex, sessionPosition, level,
             className="absolute rounded-full blur-2xl opacity-50"
             style={{ width: 190, height: 190, background: `radial-gradient(circle, ${BRAND.mistBlue}, transparent 70%)`, animation: 'orbPulse 5s ease-in-out infinite' }}
           />
-          <AwarenessIllustration pose={exercise.pose} activeRegions={activeRegions} showArrows={showArrows} t={t} />
+          <AwarenessIllustration pose={exercise.pose} activeRegions={activeRegions} stageId={stageId} exercise={exercise} />
         </div>
 
         <p className={`text-sm max-w-xs ${t.text}`}>{stage.prompt}</p>
@@ -3147,7 +3233,7 @@ function SplashScreen({ onBegin, t }) {
           className="absolute inset-8 rounded-full blur-xl opacity-80"
           style={{ background: `conic-gradient(from 90deg, ${BRAND.sageGreen}, ${BRAND.sageFog}, ${BRAND.mistBlue}, ${BRAND.sageGreen})`, animation: 'orbSpin 24s linear infinite reverse' }}
         />
-        <div style={{ animation: 'orbPulse 6s ease-in-out infinite' }}>
+        <div style={{ animation: 'orbPulse 6s ease-in-out infinite, floatY 7s ease-in-out infinite' }}>
           <LuminousMark size={118} t={t} />
         </div>
       </div>
@@ -3270,13 +3356,17 @@ export default function LuminousApp() {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes logoFadeIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
-        @keyframes screenIn { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes screenIn { from { opacity: 0; transform: translateY(18px) scale(0.98); filter: blur(4px); } to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
         @keyframes orbSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes orbPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.045); } }
         @keyframes driftA { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(34px,26px) scale(1.08); } }
         @keyframes driftB { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-28px,30px) scale(1.06); } }
         @keyframes driftC { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(24px,-24px) scale(1.05); } }
-        .luminous-screen { animation: screenIn 750ms cubic-bezier(0.16,1,0.3,1); }
+        @keyframes morphA { 0%, 100% { border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%; } 50% { border-radius: 62% 38% 35% 65% / 55% 62% 38% 45%; } }
+        @keyframes morphB { 0%, 100% { border-radius: 55% 45% 40% 60% / 40% 55% 45% 60%; } 50% { border-radius: 35% 65% 60% 40% / 60% 40% 55% 45%; } }
+        @keyframes morphC { 0%, 100% { border-radius: 48% 52% 55% 45% / 60% 45% 55% 40%; } 50% { border-radius: 64% 36% 42% 58% / 40% 60% 45% 55%; } }
+        @keyframes floatY { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        .luminous-screen { animation: screenIn 850ms cubic-bezier(0.16,1,0.3,1); }
         .luminous-screen * { transition-timing-function: cubic-bezier(0.16,1,0.3,1); }
       `}</style>
 
