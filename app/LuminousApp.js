@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Play, Pause, Sun, Moon, ChevronRight, ChevronLeft, Volume2, VolumeX,
+  Play, Pause, Moon, ChevronRight, ChevronLeft, Volume2, VolumeX,
   SkipForward, RotateCcw, Vibrate, Wind, Flame, Target, CloudRain, Leaf,
   Check, ArrowUp, ArrowDown, Sparkles, Plus, Minus, X,
   Waves, AlertTriangle, TrendingUp, BarChart3, Home, Music, Tag, History,
@@ -843,7 +843,7 @@ const MOOD_DOT_COLORS = {
 };
 
 function useTheme() {
-  const [isDark, setIsDark] = useState(false);
+  const isDark = false;
   const t = {
     bgColor: isDark ? BRAND.deepIndigo : BRAND.warmIvory, // applied via inline style at the root only
     text: isDark ? 'text-zinc-400' : 'text-zinc-500',
@@ -859,7 +859,7 @@ function useTheme() {
     buttonGhost: isDark ? 'bg-white/5 backdrop-blur-md text-zinc-300 hover:bg-white/10 shadow-sm' : 'bg-white/45 backdrop-blur-md text-zinc-600 hover:bg-white/70 shadow-sm',
     input: isDark ? 'bg-white/5 backdrop-blur-md text-zinc-200 placeholder-zinc-600 shadow-sm' : 'bg-white/50 backdrop-blur-md text-zinc-700 placeholder-zinc-400 shadow-sm',
   };
-  return { isDark, setIsDark, t };
+  return { isDark, t };
 }
 
 // Loads the brand's Display (Cormorant Garamond) and UI (Satoshi) fonts once,
@@ -882,18 +882,12 @@ function useBrandFonts() {
 }
 
 /* -------- ambient background: slow drifting brand-color light -------- */
-function AmbientField({ isDark }) {
-  const blobs = isDark
-    ? [
-        { top: '-12%', left: '-14%', size: 560, color: 'rgba(207,232,243,0.10)', anim: 'driftA 26s ease-in-out infinite' },
-        { top: '18%', right: '-16%', size: 520, color: 'rgba(216,234,219,0.10)', anim: 'driftB 32s ease-in-out infinite' },
-        { bottom: '-16%', left: '18%', size: 500, color: 'rgba(221,230,219,0.10)', anim: 'driftC 30s ease-in-out infinite' },
-      ]
-    : [
-        { top: '-12%', left: '-14%', size: 560, color: 'rgba(207,232,243,0.55)', anim: 'driftA 26s ease-in-out infinite' },
-        { top: '18%', right: '-16%', size: 520, color: 'rgba(216,234,219,0.55)', anim: 'driftB 32s ease-in-out infinite' },
-        { bottom: '-16%', left: '18%', size: 500, color: 'rgba(248,236,224,0.5)', anim: 'driftC 30s ease-in-out infinite' },
-      ];
+function AmbientField() {
+  const blobs = [
+    { top: '-12%', left: '-14%', size: 560, color: 'rgba(207,232,243,0.55)', anim: 'driftA 26s ease-in-out infinite' },
+    { top: '18%', right: '-16%', size: 520, color: 'rgba(216,234,219,0.55)', anim: 'driftB 32s ease-in-out infinite' },
+    { bottom: '-16%', left: '18%', size: 500, color: 'rgba(248,236,224,0.5)', anim: 'driftC 30s ease-in-out infinite' },
+  ];
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
       {blobs.map((b, i) => (
@@ -987,18 +981,6 @@ function Logo({ t }) {
   );
 }
 
-function ThemeToggle({ isDark, setIsDark, t }) {
-  return (
-    <button
-      onClick={() => setIsDark(d => !d)}
-      aria-label="Toggle dark mode"
-      className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${t.buttonGhost}`}
-    >
-      {isDark ? <Sun size={16} strokeWidth={1.6} /> : <Moon size={16} strokeWidth={1.6} />}
-    </button>
-  );
-}
-
 function ProgressDots({ step, t }) {
   const steps = ['Check-in', 'Session', 'Reflect'];
   if (step < 0) return null;
@@ -1017,7 +999,7 @@ function ProgressDots({ step, t }) {
   );
 }
 
-function NavBar({ active, onHome, onReset, onFocus, onSettings, isDark, setIsDark, t }) {
+function NavBar({ active, onHome, onReset, onFocus, onSettings, t }) {
   const items = [
     { id: 'home', label: 'Home', icon: Home, action: onHome },
     { id: 'reset', label: 'Reset', icon: Leaf, action: onReset },
@@ -1034,7 +1016,7 @@ function NavBar({ active, onHome, onReset, onFocus, onSettings, isDark, setIsDar
             <button
               key={item.id}
               onClick={item.action}
-              className="relative flex items-center justify-center w-11 h-11 rounded-full transition-all duration-300"
+              className={`relative flex items-center justify-center w-11 h-11 rounded-full transition-all duration-[400ms] ease-out hover:scale-110 hover:-translate-y-0.5 active:scale-95 ${isActive ? '' : 'hover:bg-black/5'}`}
             >
               {isActive && (
                 <span className="absolute inset-0 rounded-full bg-gradient-to-br from-sky-200/70 via-blue-200/60 to-green-200/60" />
@@ -1043,8 +1025,6 @@ function NavBar({ active, onHome, onReset, onFocus, onSettings, isDark, setIsDar
             </button>
           );
         })}
-        <span className="w-px h-5 mx-1 bg-current opacity-10" />
-        <ThemeToggle isDark={isDark} setIsDark={setIsDark} t={t} />
       </div>
     </div>
   );
@@ -1080,7 +1060,7 @@ function MoodPicker({ value, onChange, t }) {
           onClick={() => onChange(i)}
           className="flex flex-col items-center gap-2 group"
         >
-          <div className={`p-2.5 rounded-2xl transition-all duration-300 ${value === i ? (t.isDark ? 'bg-sky-950/40' : 'bg-sky-50') : ''}`}>
+          <div className={`p-2.5 rounded-2xl transition-all duration-[400ms] ${value === i ? (t.isDark ? 'bg-sky-950/40' : 'bg-sky-50') : ''}`}>
             <FaceIcon level={i} active={value === i} t={t} />
           </div>
           <span className={`text-[11px] transition-colors ${value === i ? 'text-sky-400' : t.textSoft}`}>{label}</span>
@@ -1139,7 +1119,7 @@ function MoodQuiz({ answers, setAnswer, t }) {
               <button
                 key={opt.id}
                 onClick={() => choose(q.id, opt.id)}
-                className={`flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl text-sm transition-all duration-300 ${
+                className={`flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl text-sm transition-all duration-[400ms] ${
                   active ? t.cardAlt : 'hover:bg-white/25'
                 }`}
               >
@@ -1148,7 +1128,7 @@ function MoodQuiz({ answers, setAnswer, t }) {
                   <span className={t.heading}>{opt.label}</span>
                 </span>
                 <span
-                  className="w-4 h-4 rounded-full flex-shrink-0 transition-all duration-300"
+                  className="w-4 h-4 rounded-full flex-shrink-0 transition-all duration-[400ms]"
                   style={{
                     boxShadow: `inset 0 0 0 1.5px ${active ? BRAND.deepIndigo : BRAND.lightGray}`,
                     backgroundColor: active ? BRAND.deepIndigo : 'transparent',
@@ -1174,8 +1154,8 @@ function MoodQuiz({ answers, setAnswer, t }) {
 
 function Shell({ children, t }) {
   return (
-    <div className="relative z-10 min-h-screen w-full flex items-center justify-center px-5 py-10 pb-28">
-      <div className="w-full max-w-md">{children}</div>
+    <div className="relative z-10 min-h-screen w-full flex items-center justify-center px-5 sm:px-8 lg:px-12 py-10 lg:py-16 pb-28">
+      <div className="w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-3xl">{children}</div>
     </div>
   );
 }
@@ -1308,13 +1288,13 @@ function greeting() {
   return 'Good evening.';
 }
 
-function IntroScreen({ onBegin, onFocus, onSettings, onQuickReset, t, isDark, setIsDark, historyCount, streak, lastMood, todayCount }) {
+function IntroScreen({ onBegin, onFocus, onSettings, onQuickReset, t, historyCount, streak, lastMood, todayCount }) {
   return (
     <Shell t={t}>
-      <NavBar active="home" onHome={() => {}} onReset={onBegin} onFocus={onFocus} onSettings={onSettings} isDark={isDark} setIsDark={setIsDark} t={t} />
+      <NavBar active="home" onHome={() => {}} onReset={onBegin} onFocus={onFocus} onSettings={onSettings} t={t} />
 
       <div className="flex flex-col items-center text-center gap-6" style={{ animation: 'screenIn 700ms cubic-bezier(0.16,1,0.3,1)' }}>
-        <LuminousMark size={72} t={t} />
+        <LuminousMark size={62} t={t} />
         <div>
           <h1 className={`text-2xl font-light mb-1 ${t.heading}`} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>{greeting()}</h1>
           <p className={`text-sm ${t.textSoft}`}>Take a moment for yourself.</p>
@@ -1323,20 +1303,20 @@ function IntroScreen({ onBegin, onFocus, onSettings, onQuickReset, t, isDark, se
         <div className="flex flex-col sm:flex-row gap-3 w-full">
           <button
             onClick={onBegin}
-            className={`flex-1 px-6 py-3.5 rounded-full text-sm tracking-wide transition-all duration-300 flex items-center justify-center gap-2 ${t.button}`}
+            className={`flex-1 px-6 py-3.5 rounded-full text-sm tracking-wide transition-all duration-[400ms] flex items-center justify-center gap-2 ${t.button}`}
           >
             Begin a Reset <ChevronRight size={15} strokeWidth={1.8} />
           </button>
           <button
             onClick={onFocus}
-            className={`flex-1 px-6 py-3.5 rounded-full text-sm tracking-wide transition-all duration-300 flex items-center justify-center gap-2 ${t.buttonGhost}`}
+            className={`flex-1 px-6 py-3.5 rounded-full text-sm tracking-wide transition-all duration-[400ms] flex items-center justify-center gap-2 ${t.buttonGhost}`}
           >
             Focus Session <ChevronRight size={15} strokeWidth={1.8} />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mt-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-8">
         <div className={`rounded-2xl p-4 ${t.card}`}>
           <p className={`text-lg font-light ${t.heading}`}>{todayCount}</p>
           <p className={`text-[11px] mt-0.5 ${t.textSoft}`}>Today's sessions</p>
@@ -1349,7 +1329,7 @@ function IntroScreen({ onBegin, onFocus, onSettings, onQuickReset, t, isDark, se
           <p className={`text-lg font-light ${t.heading}`}>{lastMood || '—'}</p>
           <p className={`text-[11px] mt-0.5 ${t.textSoft}`}>Last mood</p>
         </div>
-        <button onClick={onQuickReset} className={`rounded-2xl p-4 text-left transition hover:-translate-y-0.5 ${t.card}`}>
+        <button onClick={onQuickReset} className={`rounded-2xl p-4 text-left transition duration-[400ms] hover:-translate-y-0.5 hover:shadow-md ${t.card}`}>
           <p className={`text-lg font-light ${t.heading}`}>Guide</p>
           <p className={`text-[11px] mt-0.5 ${t.textSoft}`}>Skip check-in →</p>
         </button>
@@ -1387,7 +1367,7 @@ function PreMoodScreen({ quizAnswers, setQuizAnswer, tensionAreas, toggleTension
                 <button
                   key={area.id}
                   onClick={() => toggleTensionArea(area.id)}
-                  className={`px-3.5 py-2 rounded-full text-xs transition-all duration-300 ${
+                  className={`px-3.5 py-2 rounded-full text-xs transition-all duration-[400ms] ${
                     active ? 'bg-green-100/80 text-green-700 shadow-sm' : t.buttonGhost
                   }`}
                 >
@@ -1421,7 +1401,7 @@ function PreMoodScreen({ quizAnswers, setQuizAnswer, tensionAreas, toggleTension
         <button
           disabled={!quizComplete}
           onClick={onContinue}
-          className={`px-7 py-3 rounded-full text-sm transition-all duration-300 flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed ${t.button}`}
+          className={`px-7 py-3 rounded-full text-sm transition-all duration-[400ms] flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed ${t.button}`}
         >
           Continue <ChevronRight size={15} strokeWidth={1.8} />
         </button>
@@ -1967,7 +1947,7 @@ function GuideLevelPicker({ level, setLevel, t }) {
         <button
           key={l.id}
           onClick={() => setLevel(l.id)}
-          className={`px-3.5 py-2 rounded-full text-xs transition-all duration-300 ${
+          className={`px-3.5 py-2 rounded-full text-xs transition-all duration-[400ms] ${
             level === l.id ? 'bg-sky-100/80 text-sky-700 shadow-sm' : t.buttonGhost
           }`}
         >
@@ -2632,25 +2612,27 @@ function ExerciseCatalog({ t }) {
       <p className={`text-[11px] text-center mb-1 ${t.textSoft}`}>
         Every exercise the Luminous Guide can draw from. Sessions are put together automatically based on your check-in.
       </p>
-      {AT_EXERCISES.map(ex => (
-        <div key={ex.id} className={`rounded-2xl p-4 ${t.card}`}>
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <p className={`text-sm ${t.heading}`}>{ex.name}</p>
-            {ex.movement && <span className={`text-[10px] uppercase tracking-wide flex-shrink-0 ${t.textSoft}`}>Movement</span>}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {AT_EXERCISES.map(ex => (
+          <div key={ex.id} className={`rounded-2xl p-4 transition duration-[400ms] hover:-translate-y-0.5 hover:shadow-md ${t.card}`}>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <p className={`text-sm ${t.heading}`}>{ex.name}</p>
+              {ex.movement && <span className={`text-[10px] uppercase tracking-wide flex-shrink-0 ${t.textSoft}`}>Movement</span>}
+            </div>
+            <p className={`text-xs mb-2.5 ${t.textSoft}`}>{ex.blurb}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {ex.tags.map(tag => (
+                <span key={tag} className={`text-[10px] px-2 py-1 rounded-full ${t.purple}`}>{STATE_TAG_LABELS[tag] || tag}</span>
+              ))}
+            </div>
           </div>
-          <p className={`text-xs mb-2.5 ${t.textSoft}`}>{ex.blurb}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {ex.tags.map(tag => (
-              <span key={tag} className={`text-[10px] px-2 py-1 rounded-full ${t.purple}`}>{STATE_TAG_LABELS[tag] || tag}</span>
-            ))}
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
 
-function SettingsScreen({ savedEntries, nav, isDark, setIsDark, t }) {
+function SettingsScreen({ savedEntries, nav, t }) {
   const [view, setView] = useState('stats'); // stats | catalog
   const [studyLog, setStudyLog] = useState([]);
   const [exerciseCounts, setExerciseCounts] = useState({});
@@ -2709,7 +2691,7 @@ function SettingsScreen({ savedEntries, nav, isDark, setIsDark, t }) {
         <div className={`inline-flex gap-1 p-1 rounded-full ${t.cardAlt}`}>
           <button
             onClick={() => setView('stats')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs transition-all duration-300 ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs transition-all duration-[400ms] ${
               view === 'stats' ? 'bg-sky-100/80 text-sky-700 shadow-sm' : t.textSoft
             }`}
           >
@@ -2717,7 +2699,7 @@ function SettingsScreen({ savedEntries, nav, isDark, setIsDark, t }) {
           </button>
           <button
             onClick={() => setView('catalog')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs transition-all duration-300 ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs transition-all duration-[400ms] ${
               view === 'catalog' ? 'bg-sky-100/80 text-sky-700 shadow-sm' : t.textSoft
             }`}
           >
@@ -2748,7 +2730,7 @@ function SettingsScreen({ savedEntries, nav, isDark, setIsDark, t }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total sessions" value={totalSessions} t={t} />
         <StatCard label="Current streak" value={`${streak} day${streak === 1 ? '' : 's'}`} t={t} />
         <StatCard label="Study time" value={`${totalStudyMinutes}m`} t={t} />
@@ -2958,7 +2940,7 @@ function FocusTimer({ label, secondsLeft, totalSeconds, paused, onPauseToggle, o
         <div className="h-full transition-all duration-700" style={{ width: `${(1 - fraction) * 100}%`, background: `linear-gradient(to right, ${BRAND.mistBlue}, ${BRAND.sageFog}, ${BRAND.sageGreen})` }} />
       </div>
 
-      <div className="flex items-center gap-4 mt-10 opacity-40 hover:opacity-100 transition-opacity duration-300">
+      <div className="flex items-center gap-4 mt-10 opacity-40 hover:opacity-100 transition-opacity duration-[400ms]">
         <button onClick={onPauseToggle} className={`w-10 h-10 rounded-full flex items-center justify-center transition ${t.buttonGhost}`}>
           {paused ? <Play size={15} strokeWidth={1.6} /> : <Pause size={15} strokeWidth={1.6} />}
         </button>
@@ -2972,7 +2954,7 @@ function StudyReflectScreen({ studyMin, rounds, goal, mood, setMood, focusRating
   return (
     <Shell t={t}>
       <div className="flex flex-col items-center text-center gap-3 mb-8">
-        <LuminousMark size={56} t={t} />
+        <LuminousMark size={48} t={t} />
         <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }} className={`text-xl font-light ${t.heading}`}>
           Well done — you focused for {studyMin * rounds} minute{studyMin * rounds === 1 ? '' : 's'}
           {rounds > 1 ? ` across ${rounds} rounds` : ''}.
@@ -3166,7 +3148,7 @@ function SplashScreen({ onBegin, t }) {
           style={{ background: `conic-gradient(from 90deg, ${BRAND.sageGreen}, ${BRAND.sageFog}, ${BRAND.mistBlue}, ${BRAND.sageGreen})`, animation: 'orbSpin 24s linear infinite reverse' }}
         />
         <div style={{ animation: 'orbPulse 6s ease-in-out infinite' }}>
-          <LuminousMark size={140} t={t} />
+          <LuminousMark size={118} t={t} />
         </div>
       </div>
       <p className={`text-2xl sm:text-4xl mb-3 tracking-[0.25em] ${t.heading}`} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>LUMINOUS</p>
@@ -3175,7 +3157,7 @@ function SplashScreen({ onBegin, t }) {
       <p className={`text-sm sm:text-lg leading-relaxed mb-12 ${t.textSoft}`}>A moment for you.<br />A lifetime of clarity.</p>
       <button
         onClick={onBegin}
-        className={`px-9 sm:px-11 py-3.5 sm:py-4 rounded-full text-sm sm:text-base tracking-wide transition-all duration-300 ${t.button}`}
+        className={`px-9 sm:px-11 py-3.5 sm:py-4 rounded-full text-sm sm:text-base tracking-wide transition-all duration-[400ms] ${t.button}`}
       >
         Begin
       </button>
@@ -3188,7 +3170,7 @@ function SplashScreen({ onBegin, t }) {
    ========================================================================= */
 
 export default function LuminousApp() {
-  const { isDark, setIsDark, t } = useTheme();
+  const { isDark, t } = useTheme();
   t.isDark = isDark;
   useBrandFonts();
 
@@ -3276,7 +3258,6 @@ export default function LuminousApp() {
     onReset: () => setScreen('preMood'),
     onFocus: () => setScreen('pomodoro'),
     onSettings: () => setScreen('settings'),
-    isDark, setIsDark,
   };
 
   const todayCount = savedEntries.filter(e => new Date(e.date).toDateString() === new Date().toDateString()).length;
@@ -3299,7 +3280,7 @@ export default function LuminousApp() {
         .luminous-screen * { transition-timing-function: cubic-bezier(0.16,1,0.3,1); }
       `}</style>
 
-      <AmbientField isDark={isDark} />
+      <AmbientField />
 
       <div key={screen} className="luminous-screen relative">
         {screen === 'splash' && (
@@ -3312,7 +3293,7 @@ export default function LuminousApp() {
             onFocus={() => setScreen('pomodoro')}
             onSettings={() => setScreen('settings')}
             onQuickReset={() => setScreen('guide')}
-            t={t} isDark={isDark} setIsDark={setIsDark}
+            t={t}
             historyCount={savedEntries.length}
             streak={streak}
             lastMood={lastMood}
@@ -3367,7 +3348,7 @@ export default function LuminousApp() {
         )}
 
         {screen === 'settings' && (
-          <SettingsScreen savedEntries={savedEntries} nav={nav} isDark={isDark} setIsDark={setIsDark} t={t} />
+          <SettingsScreen savedEntries={savedEntries} nav={nav} t={t} />
         )}
       </div>
     </div>
