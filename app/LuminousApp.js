@@ -183,6 +183,17 @@ const AT_STAGE_META = {
   transfer: { label: 'Transfer', concept: 'meansWhereby' },
 };
 
+// Most exercises walk the same five AT_STAGES with the labels above. A few
+// (like the chair sequence) walk their own ordered, custom-labeled steps
+// instead — `exercise.stageOrder` / `exercise.stageMeta` override the
+// defaults when present, so the session loop and guide prompt stay generic.
+function stageOrderFor(exercise) {
+  return (exercise && exercise.stageOrder) || AT_STAGES;
+}
+function stageMetaFor(exercise, stageId) {
+  return (exercise && exercise.stageMeta && exercise.stageMeta[stageId]) || AT_STAGE_META[stageId];
+}
+
 // Body regions the illustrations can highlight. Keep this list in sync with
 // AwarenessIllustration's pose drawings and POSE_POINTS below.
 const BODY_REGIONS = ['head', 'neck', 'shoulders', 'spine', 'pelvis', 'hands', 'feet'];
@@ -287,35 +298,59 @@ const AT_EXERCISES = [
   {
     id: 'sitToStand',
     name: 'Sitting → Standing',
-    blurb: 'Notice your habitual pattern of standing up, and explore a freer one.',
+    blurb: 'The simple basic chair exercise — sit down and stand up without collapsing, tightening your neck, or loading your spine.',
     tags: ['restless', 'distracted', 'energized'],
     pose: 'sitToStand',
     movement: true,
+    // A literal six-step chair sequence rather than the usual five AT
+    // stages — stageOrder/stageMeta override the AT_STAGES defaults so the
+    // session loop and guide prompt stay generic. See ChairSequenceFigure
+    // for the matching side-view diagrams.
+    stageOrder: ['prepare', 'initiate', 'sitDown', 'prepareToStand', 'rise', 'stand'],
+    stageMeta: {
+      prepare: { label: 'Prepare', concept: 'awareness' },
+      initiate: { label: 'Initiate', concept: 'direction' },
+      sitDown: { label: 'Sit Down', concept: 'direction' },
+      prepareToStand: { label: 'Prepare to Stand', concept: 'inhibition' },
+      rise: { label: 'Rise', concept: 'meansWhereby' },
+      stand: { label: 'Stand', concept: 'awareness' },
+    },
     stages: {
-      notice: {
-        prompt: "Sit toward the front edge of a chair, feet flat on the floor. Before moving, just notice how you're about to stand up.",
-        questions: ['What do you notice about how you usually stand up?'],
-        regions: ['pelvis', 'feet'],
+      prepare: {
+        prompt: 'Stand a few inches in front of your chair. Sense your length, and let your weight settle evenly over both feet.',
+        questions: ['What do you notice about how you’re standing right now?'],
+        regions: ['feet', 'spine'],
+        guideRule: 'The person may describe feeling stiff, uneven, or off-balance — accept that exactly as they describe it. Do not soften, correct, or reinterpret their words.',
       },
-      investigate: {
-        prompt: 'Notice where your weight is right now — more on your feet, or more on the chair?',
-        questions: ['Where does your weight feel like it is?', 'What happens in your neck as you think about standing?'],
-        regions: ['pelvis', 'feet', 'neck'],
+      initiate: {
+        prompt: 'Begin to lower down. Let your head stay free and your back lengthen as you hinge from your hips and knees together, moving from your center.',
+        questions: ['What did you notice as you began to move?'],
+        regions: ['neck', 'spine'],
+        guideRule: 'If they mention cracking joints, feeling off-balance, or trouble hinging, reflect that back in their own words rather than offering a "correct" version.',
       },
-      explore: {
-        prompt: 'Before you move, silently think "let my neck be free." Then let your weight shift forward over your feet, and allow yourself to rise — no rushing.',
-        questions: ['What did you notice about that way of moving?'],
-        regions: ['neck', 'pelvis', 'feet'],
+      sitDown: {
+        prompt: 'Continue lowering until your sit bones find the chair. Let your weight be carried by the chair and your feet, not a last-second drop.',
+        questions: ['What did you notice as you lowered down?'],
+        regions: ['pelvis', 'spine'],
+        guideRule: 'If they describe landing hard or losing control on the way down, accept that description exactly as given, without judgment or correction.',
       },
-      compare: {
-        prompt: 'Notice how that felt compared to how you normally stand up.',
-        questions: ['What was different, if anything?', 'Can you notice that without deciding if it was better or worse?'],
-        regions: ['spine', 'pelvis'],
+      prepareToStand: {
+        prompt: 'Come forward to the front of your seat, feet under your knees. Lean forward from your hips, keeping your spine long and your head free.',
+        questions: ['What do you notice about your feet and readiness to rise?'],
+        regions: ['feet', 'pelvis'],
+        guideRule: 'Mirror their description of their posture or readiness back in their own terms — do not correct or rephrase it.',
       },
-      transfer: {
-        prompt: 'Next time you stand up today, see if you can pause for just a moment first.',
-        questions: ['What would it be like to pause like that during your day?'],
-        regions: ['spine'],
+      rise: {
+        prompt: 'Push the floor away with your feet and rise smoothly, letting your whole body coordinate as one — no need to reach for your hands.',
+        questions: ['What did you notice as you rose?'],
+        regions: ['feet', 'spine'],
+        guideRule: 'If they mention using their hands or straining in their thighs, keep their wording exactly as given rather than substituting an "ideal" version.',
+      },
+      stand: {
+        prompt: 'Arrive standing. Let yourself lengthen up naturally, then pause for a moment and sense your balance.',
+        questions: ['What do you notice now that you’ve arrived standing?'],
+        regions: ['spine', 'feet'],
+        guideRule: 'Accept their final assessment exactly as stated — taller, shorter, stiff, relaxed, whatever they say — without steering it toward a positive spin.',
       },
     },
   },
@@ -918,6 +953,36 @@ function AmbientField() {
 // project's GitHub Pages subpath.
 const LOGO_SRC = `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.png`;
 
+// The 13 supplied exercise-diagram PNGs (public/exercises/) — used verbatim,
+// never redrawn. AwarenessIllustration picks one of the ten pose diagrams
+// per moment; the three legend images (focusPoints/breathCues/movementCues)
+// are shown once, up front, in SessionIntro.
+const EXERCISE_DIAGRAM_BASE = `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/exercises`;
+const EXERCISE_DIAGRAMS = {
+  pause: { src: `${EXERCISE_DIAGRAM_BASE}/01-pause.png`, alt: 'Pause — notice your body' },
+  breathe: { src: `${EXERCISE_DIAGRAM_BASE}/02-breathe.png`, alt: 'Breathe — inhale and exhale' },
+  release: { src: `${EXERCISE_DIAGRAM_BASE}/03-release.png`, alt: 'Release — let go of extra tension' },
+  lengthen: { src: `${EXERCISE_DIAGRAM_BASE}/04-lengthen.png`, alt: 'Lengthen — create space' },
+  move: { src: `${EXERCISE_DIAGRAM_BASE}/05-move.png`, alt: 'Move — move with ease' },
+  breathAwareness: { src: `${EXERCISE_DIAGRAM_BASE}/06-breath-awareness.png`, alt: 'Breath awareness — feel the natural rhythm' },
+  neckRelease: { src: `${EXERCISE_DIAGRAM_BASE}/07-neck-release.png`, alt: 'Neck release — let your head balance' },
+  shoulderRelease: { src: `${EXERCISE_DIAGRAM_BASE}/08-shoulder-release.png`, alt: 'Shoulder release — release and widen' },
+  spinalLength: { src: `${EXERCISE_DIAGRAM_BASE}/09-spinal-length.png`, alt: 'Spinal length — grow taller from within' },
+  grounding: { src: `${EXERCISE_DIAGRAM_BASE}/10-grounding.png`, alt: 'Grounding — feel supported' },
+  focusPoints: { src: `${EXERCISE_DIAGRAM_BASE}/11-focus-points.png`, alt: 'Focus points legend: awareness, expansion, grounding' },
+  breathCues: { src: `${EXERCISE_DIAGRAM_BASE}/12-breath-cues.png`, alt: 'Breath cues legend: inhale, exhale' },
+  movementCues: { src: `${EXERCISE_DIAGRAM_BASE}/13-movement-cues.png`, alt: 'Movement cues legend: gently move, lengthen, release, repeat' },
+};
+
+function ExerciseDiagram({ diagram, className }) {
+  const d = EXERCISE_DIAGRAMS[diagram];
+  if (!d) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={d.src} alt={d.alt} className={className} draggable={false} />
+  );
+}
+
 /* -------- the Luminous mark: the brand logo, used wherever the mark appears -------- */
 function LuminousMark({ size = 140, t }) {
   // A blurred, slightly larger duplicate of the exact same artwork sits
@@ -1093,7 +1158,7 @@ function MoodQuiz({ answers, setAnswer, t }) {
     const category = MOOD_CATEGORIES.find(c => c.id === FEELING_TO_CATEGORY[answers.feeling]);
     const Icon = category ? category.icon : Leaf;
     return (
-      <div key="quiz-done" className="flex flex-col items-center text-center gap-3 py-6" style={{ animation: 'screenIn 550ms cubic-bezier(0.16,1,0.3,1)' }}>
+      <div key="quiz-done" className="flex flex-col items-center text-center gap-3 py-6" style={{ animation: 'screenIn 900ms cubic-bezier(0.16,1,0.3,1)' }}>
         <div className={`w-12 h-12 rounded-full flex items-center justify-center ${t.purple}`}>
           <Icon size={18} strokeWidth={1.7} />
         </div>
@@ -1115,7 +1180,7 @@ function MoodQuiz({ answers, setAnswer, t }) {
         {String(step + 1).padStart(2, '0')} / {String(MOOD_QUIZ.length).padStart(2, '0')}
       </p>
 
-      <div key={q.id} style={{ animation: 'screenIn 550ms cubic-bezier(0.16,1,0.3,1)' }}>
+      <div key={q.id} style={{ animation: 'screenIn 900ms cubic-bezier(0.16,1,0.3,1)' }}>
         <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }} className={`text-xl text-center mb-6 ${t.heading}`}>{q.question}</p>
         <div className="flex flex-col gap-1">
           {q.options.map((opt, idx) => {
@@ -1299,7 +1364,7 @@ function IntroScreen({ onBegin, onFocus, onSettings, onQuickReset, t, historyCou
     <Shell t={t}>
       <NavBar active="home" onHome={() => {}} onReset={onBegin} onFocus={onFocus} onSettings={onSettings} t={t} />
 
-      <div className="flex flex-col items-center text-center gap-6" style={{ animation: 'screenIn 700ms cubic-bezier(0.16,1,0.3,1)' }}>
+      <div className="flex flex-col items-center text-center gap-6" style={{ animation: 'screenIn 1150ms cubic-bezier(0.16,1,0.3,1)' }}>
         <LuminousMark size={62} t={t} />
         <div>
           <h1 className={`text-2xl font-light mb-1 ${t.heading}`} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>{greeting()}</h1>
@@ -1467,25 +1532,10 @@ const REGION_MOTIF_COLOR = {
   pelvis: MOTIF_PEACH, feet: MOTIF_PEACH,
 };
 
-// Where each region sits on each base figure, in that figure's own local
-// coordinates (each figure is drawn at the origin; AwarenessIllustration
-// translates/scales the whole group, and these points move with it).
+// Where each region sits on the reclining figure, in that figure's own
+// local coordinates — the only pose without a matching supplied diagram, so
+// it's still the hand-drawn region-glow fallback below.
 const FIGURE_POINTS = {
-  bustFront: {
-    head: { x: 100, y: 46 }, neck: { x: 100, y: 78 }, shoulders: { x: 100, y: 98 },
-    spine: { x: 100, y: 150 }, pelvis: { x: 100, y: 196 },
-    hands: { x: 38, y: 168 }, feet: { x: 100, y: 210 },
-  },
-  bustProfile: {
-    head: { x: 92, y: 46 }, neck: { x: 84, y: 76 }, shoulders: { x: 90, y: 90 },
-    spine: { x: 60, y: 140 }, pelvis: { x: 90, y: 196 },
-    hands: { x: 66, y: 172 }, feet: { x: 90, y: 212 },
-  },
-  standing: {
-    head: { x: 100, y: 40 }, neck: { x: 98, y: 65 }, shoulders: { x: 97, y: 78 },
-    spine: { x: 74, y: 112 }, pelvis: { x: 97, y: 150 },
-    hands: { x: 68, y: 146 }, feet: { x: 97, y: 242 },
-  },
   semiSupine: {
     head: { x: 36, y: 80 }, neck: { x: 54, y: 78 }, shoulders: { x: 62, y: 76 },
     spine: { x: 98, y: 80 }, pelvis: { x: 140, y: 80 },
@@ -1515,183 +1565,8 @@ function GlowAura({ cx, cy, r = 30, color, dur = 4.5 }) {
   );
 }
 
-// A dotted path with a small arrow, gently flowing upward — "lengthen."
-function LengthenPath({ x, yFrom, yTo, color }) {
-  return (
-    <g>
-      <line x1={x} y1={yFrom} x2={x} y2={yTo} stroke={color} strokeWidth="1.6" strokeDasharray="0.5 6" strokeLinecap="round">
-        <animate attributeName="stroke-dashoffset" values="0;-13" dur="2.4s" repeatCount="indefinite" />
-      </line>
-      <g>
-        <animateTransform attributeName="transform" type="translate" values="0,6;0,-3;0,6" dur="2.4s" repeatCount="indefinite" />
-        <path d={`M${x - 5},${yTo + 9} L${x},${yTo} L${x + 5},${yTo + 9}`} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      </g>
-    </g>
-  );
-}
-
-// Two dotted arrows flowing down and out, fading off the edge — "release."
-function ReleaseArrows({ leftX, rightX, yFrom, yTo, color }) {
-  const chevron = (cx, cy, mirror) => (
-    <path d={`M${cx - (mirror ? -5 : 5)},${cy - 7} L${cx},${cy} L${cx + (mirror ? -5 : 5)},${cy - 7}`} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  );
-  return (
-    <g opacity="0.85">
-      <path d={`M${leftX},${yFrom} Q${leftX - 8},${(yFrom + yTo) / 2} ${leftX - 3},${yTo}`} fill="none" stroke={color} strokeWidth="1.4" strokeDasharray="0.5 6" strokeLinecap="round">
-        <animate attributeName="stroke-dashoffset" values="0;-13" dur="2.6s" repeatCount="indefinite" />
-      </path>
-      {chevron(leftX - 3, yTo, false)}
-      <path d={`M${rightX},${yFrom} Q${rightX + 8},${(yFrom + yTo) / 2} ${rightX + 3},${yTo}`} fill="none" stroke={color} strokeWidth="1.4" strokeDasharray="0.5 6" strokeLinecap="round">
-        <animate attributeName="stroke-dashoffset" values="0;-13" dur="2.6s" repeatCount="indefinite" />
-      </path>
-      {chevron(rightX + 3, yTo, true)}
-    </g>
-  );
-}
-
-// Two curved arrows opening outward, like a wing unfolding — "widen."
-function WideningArrows({ cx, cy, spread = 34, color }) {
-  return (
-    <g opacity="0.9">
-      <g>
-        <animateTransform attributeName="transform" type="translate" values="0,0;-2,1.5;0,0" dur="2.8s" repeatCount="indefinite" />
-        <path d={`M${cx - 10},${cy} Q${cx - spread * 0.7},${cy + 4} ${cx - spread},${cy + 14}`} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
-      </g>
-      <g>
-        <animateTransform attributeName="transform" type="translate" values="0,0;2,1.5;0,0" dur="2.8s" repeatCount="indefinite" />
-        <path d={`M${cx + 10},${cy} Q${cx + spread * 0.7},${cy + 4} ${cx + spread},${cy + 14}`} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
-      </g>
-    </g>
-  );
-}
-
-// Two flowing waves, breathing in and out — used specifically for
-// breath-focused moments, echoing the reference chart's "Breathe" panel.
-function BreathWaves({ x, y, colorIn, colorOut }) {
-  return (
-    <g>
-      <g>
-        <animateTransform attributeName="transform" type="translate" values="0,0;5,0;0,0" dur="3.6s" repeatCount="indefinite" />
-        <path d={`M${x},${y - 9} Q${x + 13},${y - 17} ${x + 26},${y - 9} Q${x + 39},${y - 1} ${x + 52},${y - 9}`} fill="none" stroke={colorIn} strokeWidth="1.6" strokeLinecap="round" opacity="0.9" />
-      </g>
-      <g>
-        <animateTransform attributeName="transform" type="translate" values="0,0;-5,0;0,0" dur="3.6s" repeatCount="indefinite" />
-        <path d={`M${x},${y + 9} Q${x + 13},${y + 1} ${x + 26},${y + 9} Q${x + 39},${y + 17} ${x + 52},${y + 9}`} fill="none" stroke={colorOut} strokeWidth="1.6" strokeLinecap="round" opacity="0.9" />
-      </g>
-    </g>
-  );
-}
-
-// Concentric rings expanding and fading outward — "grounding."
-function RippleRings({ cx, cy, color }) {
-  return (
-    <g>
-      {[0, 1, 2].map(i => (
-        <ellipse key={i} cx={cx} cy={cy} rx="12" ry="4.5" fill="none" stroke={color} strokeWidth="1.4">
-          <animate attributeName="rx" values="8;32" dur="3s" begin={`${i * 1}s`} repeatCount="indefinite" />
-          <animate attributeName="ry" values="3;11" dur="3s" begin={`${i * 1}s`} repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.65;0" dur="3s" begin={`${i * 1}s`} repeatCount="indefinite" />
-        </ellipse>
-      ))}
-    </g>
-  );
-}
-
-// A soft downward drift — "settle."
-function SettleArrow({ x, y, color }) {
-  return (
-    <g>
-      <animateTransform attributeName="transform" type="translate" values="0,0;0,5;0,0" dur="2.6s" repeatCount="indefinite" />
-      <line x1={x} y1={y - 10} x2={x} y2={y + 5} stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.85" />
-      <path d={`M${x - 4},${y - 2} L${x},${y + 6} L${x + 4},${y - 2}`} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
-    </g>
-  );
-}
-
-// A faint trailing wave behind a step — "move."
-function MotionTrail({ x, y, color }) {
-  return (
-    <path d={`M${x},${y} Q${x - 26},${y - 8} ${x - 52},${y + 3} Q${x - 78},${y + 12} ${x - 104},${y - 2}`} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5">
-      <animate attributeName="opacity" values="0.55;0.15;0.55" dur="3s" repeatCount="indefinite" />
-    </path>
-  );
-}
-
 // -- base figures: single-weight, unfilled outlines, cropped rather than
 // closed off (no chairs, no floor lines, no filled anatomy) --
-
-function BustFront({ ink }) {
-  const p = { stroke: ink, strokeWidth: 1.5, fill: 'none', strokeLinecap: 'round' };
-  return (
-    <g>
-      <circle cx="100" cy="46" r="24" {...p} />
-      <line x1="100" y1="70" x2="100" y2="82" {...p} />
-      <path d="M48,102 Q100,78 152,102" {...p} />
-      <path d="M152,102 C160,124 164,158 164,210" {...p} />
-      <path d="M48,102 C40,124 36,158 36,210" {...p} />
-    </g>
-  );
-}
-
-function BustProfile({ ink }) {
-  const p = { stroke: ink, strokeWidth: 1.5, fill: 'none', strokeLinecap: 'round' };
-  return (
-    <g>
-      <circle cx="92" cy="46" r="24" {...p} />
-      <path d="M114,38 Q126,44 116,54" {...p} />
-      <path d="M78,68 Q72,76 76,86" {...p} />
-      <path d="M62,88 Q52,116 58,146 C62,172 66,196 70,216" {...p} />
-      <path d="M118,92 Q130,110 124,134 C120,162 114,192 108,216" {...p} />
-      <path d="M62,88 Q92,72 118,92" {...p} />
-    </g>
-  );
-}
-
-function StandingFigure({ ink, seated = false, walking = false }) {
-  const p = { stroke: ink, strokeWidth: 1.5, fill: 'none', strokeLinecap: 'round' };
-  let legs;
-  if (seated) {
-    legs = (
-      <>
-        <path d="M80,150 C72,158 66,168 66,180" {...p} />
-        <path d="M66,180 Q78,190 92,184" {...p} />
-        <path d="M114,150 C122,158 126,168 122,180" {...p} />
-        <path d="M122,180 Q112,190 100,186" {...p} />
-      </>
-    );
-  } else if (walking) {
-    legs = (
-      <>
-        <path d="M80,150 C74,172 68,190 56,206" {...p} />
-        <path d="M56,206 Q46,210 36,207" {...p} />
-        <path d="M114,150 C120,168 128,182 132,200" {...p} />
-        <path d="M132,200 Q140,206 150,204" {...p} />
-      </>
-    );
-  } else {
-    legs = (
-      <>
-        <path d="M80,150 C78,180 76,212 78,241" {...p} />
-        <path d="M78,241 Q70,246 61,243" {...p} />
-        <path d="M114,150 C116,180 118,212 116,241" {...p} />
-        <path d="M116,241 Q124,246 133,243" {...p} />
-      </>
-    );
-  }
-  return (
-    <g>
-      <circle cx="100" cy="40" r="19" {...p} />
-      <path d="M118,34 Q128,39 120,47" {...p} />
-      <path d="M97,58 Q95,62 97,68" {...p} />
-      <path d="M78,76 Q68,108 72,148" {...p} />
-      <path d="M116,78 Q128,108 122,148" {...p} />
-      <path d="M78,76 Q100,63 116,78" {...p} />
-      <path d="M74,150 L120,150" {...p} />
-      {!seated && <path d="M76,82 C64,102 60,126 68,148" {...p} />}
-      {legs}
-    </g>
-  );
-}
 
 function RecliningFigure({ ink }) {
   const p = { stroke: ink, strokeWidth: 1.5, fill: 'none', strokeLinecap: 'round' };
@@ -1707,141 +1582,120 @@ function RecliningFigure({ ink }) {
   );
 }
 
-// A short cropped ankle + foot, used as its own full illustration when
-// grounding through the feet is the focus — echoes the reference chart's
-// dedicated "Grounding" panel rather than staying attached to a full figure.
-function FootMotif({ ink, color }) {
-  const p = { stroke: ink, strokeWidth: 1.5, fill: 'none', strokeLinecap: 'round' };
+// A simple side-view chair outline — seat, two legs, backrest — used only
+// behind the Sitting → Standing chair sequence.
+function SideChair({ ink }) {
+  const p = { stroke: ink, strokeWidth: 1.4, fill: 'none', strokeLinecap: 'round' };
   return (
-    <g transform="translate(20,10)">
-      <path d="M56,0 L52,64" {...p} />
-      <path d="M78,0 L74,60" {...p} />
-      <path d="M52,64 Q44,82 52,94 Q68,106 100,96 Q118,88 114,72 Q108,58 88,58 Q66,58 74,60" {...p} />
-      <RippleRings cx={84} cy={116} color={color} />
+    <g opacity="0.5">
+      <path d="M70,150 L142,150" {...p} />
+      <path d="M142,150 L142,198" {...p} />
+      <path d="M74,150 L74,198" {...p} />
+      <path d="M74,150 L74,90" {...p} />
     </g>
   );
 }
 
-// -- assembly: pick a base figure for the pose, then layer the motif that
-// matches whichever region(s) the current stage is about --
+// Hand-posed side-view joints (head/neck/hip/knee/ankle) for each of the six
+// chair-sequence steps — a literal, single-figure retelling of the reference
+// chart's six side-view panels, rather than a generic pose + region overlay.
+const CHAIR_POSES = {
+  prepare: { head: { x: 110, y: 44 }, neck: { x: 110, y: 64 }, hip: { x: 108, y: 130 }, knee: { x: 106, y: 176 }, ankle: { x: 104, y: 214 }, focus: 'head' },
+  initiate: { head: { x: 126, y: 56 }, neck: { x: 120, y: 72 }, hip: { x: 106, y: 132 }, knee: { x: 110, y: 178 }, ankle: { x: 104, y: 214 }, focus: 'spine' },
+  sitDown: { head: { x: 110, y: 72 }, neck: { x: 110, y: 90 }, hip: { x: 108, y: 150 }, knee: { x: 140, y: 178 }, ankle: { x: 140, y: 214 }, focus: 'pelvis' },
+  prepareToStand: { head: { x: 134, y: 84 }, neck: { x: 128, y: 100 }, hip: { x: 108, y: 150 }, knee: { x: 140, y: 178 }, ankle: { x: 138, y: 214 }, focus: 'feet' },
+  rise: { head: { x: 130, y: 70 }, neck: { x: 126, y: 86 }, hip: { x: 118, y: 132 }, knee: { x: 136, y: 176 }, ankle: { x: 136, y: 214 }, focus: 'spine' },
+  stand: { head: { x: 110, y: 44 }, neck: { x: 110, y: 64 }, hip: { x: 108, y: 130 }, knee: { x: 106, y: 176 }, ankle: { x: 104, y: 214 }, focus: 'head' },
+};
+
+function ChairSequenceFigure({ step, ink }) {
+  const j = CHAIR_POSES[step] || CHAIR_POSES.prepare;
+  const p = { stroke: ink, strokeWidth: 1.5, fill: 'none', strokeLinecap: 'round' };
+  return (
+    <g>
+      <SideChair ink={ink} />
+      <circle cx={j.head.x} cy={j.head.y} r="17" {...p} />
+      <path d={`M${j.neck.x + 3},${j.neck.y + 6} Q${j.neck.x + 15},${(j.neck.y + j.hip.y) / 2} ${j.hip.x + 6},${j.hip.y - 6}`} {...p} opacity="0.8" />
+      <path d={`M${j.neck.x},${j.neck.y} L${j.hip.x},${j.hip.y}`} {...p} />
+      <path d={`M${j.hip.x},${j.hip.y} L${j.knee.x},${j.knee.y}`} {...p} />
+      <path d={`M${j.knee.x},${j.knee.y} L${j.ankle.x},${j.ankle.y}`} {...p} />
+      <path d={`M${j.ankle.x - 4},${j.ankle.y} L${j.ankle.x + 14},${j.ankle.y}`} {...p} />
+      {j.focus === 'head' && <GlowAura cx={j.head.x} cy={j.head.y + 10} r={40} color={MOTIF_GREEN} dur={5} />}
+      {j.focus === 'spine' && <circle cx={(j.neck.x + j.hip.x) / 2} cy={(j.neck.y + j.hip.y) / 2} r="4" fill={MOTIF_GREEN} />}
+      {j.focus === 'pelvis' && <circle cx={j.hip.x} cy={j.hip.y} r="4" fill={MOTIF_GREEN} />}
+      {j.focus === 'feet' && <circle cx={j.ankle.x + 5} cy={j.ankle.y} r="4" fill={MOTIF_GREEN} />}
+    </g>
+  );
+}
 
 function AwarenessIllustration({ pose = 'sitting', activeRegions = [], stageId = 'notice', exercise }) {
   const regions = activeRegions.filter(r => REGION_MOTIF_COLOR[r]);
   const directional = stageId === 'explore' || stageId === 'transfer';
   const isBreathFocus = exercise && exercise.id === 'breathingSpace' && (regions.includes('spine') || regions.includes('shoulders'));
-  const showWalk = exercise && exercise.movement && stageId === 'transfer' && pose !== 'sitToStand';
+  const showWalk = exercise && exercise.movement && stageId === 'transfer';
   const feetFocus = directional && regions.includes('feet') && pose !== 'semiSupine';
+  const isNeckFocus = exercise && exercise.id === 'jawRelease' && directional && (regions.includes('head') || regions.includes('neck'));
+  const hasLengthen = regions.some(r => r === 'head' || r === 'neck' || r === 'spine');
+  const hasHands = regions.includes('hands');
+  const hasShoulders = regions.includes('shoulders');
+  const hasPelvis = regions.includes('pelvis');
 
-  // Grounding gets its own dedicated close-up, matching the reference's
-  // single-subject "Grounding" panel rather than a small foot tucked onto a
-  // full figure.
-  if (feetFocus) {
+  // Sitting → Standing walks its own literal six-step chair sequence
+  // (Prepare/Initiate/Sit Down/Prepare to Stand/Rise/Stand), matching the
+  // reference chart's side-view chair diagrams rather than the generic
+  // region-highlight treatment.
+  if (exercise && exercise.id === 'sitToStand') {
     return (
-      <svg viewBox="0 0 160 170" className="relative w-56 h-48">
+      <svg viewBox="0 0 200 220" className="relative w-64 h-56">
         <AuraDefs />
-        <FootMotif ink={ILLUSTRATION_INK} color={MOTIF_PEACH} />
+        <ChairSequenceFigure step={stageId} ink={ILLUSTRATION_INK} />
       </svg>
     );
   }
 
-  let figure;
-  let points;
-  let viewBox;
-
+  // Reclining keeps its own dedicated multi-figure scene — the reference
+  // chart has no equivalent pose, so it falls back to a simple
+  // general-awareness glow on whichever region is active.
   if (pose === 'semiSupine') {
-    figure = <RecliningFigure ink={ILLUSTRATION_INK} />;
-    points = FIGURE_POINTS.semiSupine;
-    viewBox = '0 0 210 170';
-  } else if (pose === 'sitToStand') {
-    viewBox = '-30 -6 300 270';
-    figure = (
-      <>
-        <g transform="translate(-10,0) scale(0.72)" opacity="0.4">
-          <StandingFigure ink={ILLUSTRATION_INK} seated />
-        </g>
-        <g transform="translate(90,0)">
-          <StandingFigure ink={ILLUSTRATION_INK} />
-        </g>
-        <path d="M55,150 Q100,190 160,150" fill="none" stroke={ILLUSTRATION_INK} strokeWidth="1.2" strokeDasharray="1 6" opacity="0.6" />
-        <path d="M150,144 L162,150 L149,155" fill="none" stroke={ILLUSTRATION_INK} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
-        <text x="34" y="252" fontSize="9" fill={ILLUSTRATION_INK} opacity="0.65">Start</text>
-        <text x="222" y="252" fontSize="9" fill={ILLUSTRATION_INK} opacity="0.65">End</text>
-      </>
+    const figure = <RecliningFigure ink={ILLUSTRATION_INK} />;
+    const points = FIGURE_POINTS.semiSupine;
+    const viewBox = '0 0 210 170';
+    const pts = regions.map(r => points[r]).filter(Boolean);
+    const glow = pts.length > 0 && (() => {
+      const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+      const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+      return <GlowAura cx={cx} cy={cy} r={46} color={REGION_MOTIF_COLOR[regions[0]]} />;
+    })();
+    return (
+      <svg viewBox={viewBox} className="relative w-64 h-56">
+        <AuraDefs />
+        {figure}
+        {glow}
+      </svg>
     );
-    points = { head: { x: 190, y: 40 }, neck: { x: 188, y: 65 }, shoulders: { x: 187, y: 78 }, spine: { x: 164, y: 112 }, pelvis: { x: 187, y: 150 }, hands: { x: 158, y: 146 }, feet: { x: 187, y: 242 } };
-  } else if (showWalk) {
-    figure = (
-      <g>
-        <StandingFigure ink={ILLUSTRATION_INK} walking />
-        <MotionTrail x={56} y={207} color={MOTIF_GREEN} />
-      </g>
-    );
-    points = FIGURE_POINTS.standing;
-    viewBox = '-40 -6 300 270';
-  } else if (pose === 'sitting') {
-    figure = <BustFront ink={ILLUSTRATION_INK} />;
-    points = FIGURE_POINTS.bustFront;
-    viewBox = '0 0 200 220';
-  } else {
-    // standing / sway
-    figure = <StandingFigure ink={ILLUSTRATION_INK} />;
-    points = FIGURE_POINTS.standing;
-    viewBox = '-40 -6 300 270';
   }
 
-  return (
-    <svg viewBox={viewBox} className="relative w-64 h-56">
-      <AuraDefs />
-      {figure}
+  // Everything else picks exactly one of the supplied diagram PNGs, in the
+  // same order of specificity the hand-drawn version used — Grounding and
+  // Breath (Awareness) first since they're independent of directionality,
+  // then Move/Neck Release, then the directional lengthen/release family,
+  // falling back to Pause for plain notice/investigate/compare moments.
+  let diagram;
+  if (feetFocus) diagram = 'grounding';
+  else if (isBreathFocus) diagram = directional ? 'breathAwareness' : 'breathe';
+  else if (showWalk) diagram = 'move';
+  else if (isNeckFocus) diagram = 'neckRelease';
+  else if (directional && hasLengthen && pose !== 'sitting') diagram = 'spinalLength';
+  else if (directional && hasLengthen) diagram = 'lengthen';
+  else if (directional && hasHands) diagram = 'release';
+  else if (directional && hasShoulders) diagram = 'shoulderRelease';
+  else if (directional && hasPelvis) diagram = 'grounding'; // no dedicated "settle" panel — grounding is the closest match
+  else diagram = 'pause';
 
-      {isBreathFocus ? (
-        <BreathWaves x={points.shoulders.x + 20} y={points.shoulders.y + 10} colorIn={MOTIF_BLUE} colorOut={MOTIF_GREEN} />
-      ) : !directional ? (
-        regions.length > 0 && (() => {
-          const pts = regions.map(r => points[r]).filter(Boolean);
-          const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
-          const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
-          return <GlowAura cx={cx} cy={cy} r={46} color={REGION_MOTIF_COLOR[regions[0]]} />;
-        })()
-      ) : (
-        <>
-          {/* head/neck/spine share one continuous lengthening path rather
-              than three overlapping dotted lines stacked on top of each other */}
-          {(() => {
-            const lengthenRegions = regions.filter(r => r === 'head' || r === 'neck' || r === 'spine');
-            if (lengthenRegions.length === 0) return null;
-            const pts = lengthenRegions.map(r => points[r]).filter(Boolean);
-            const yTop = Math.min(...pts.map(p => p.y)) - 16;
-            const yBottom = Math.max(...pts.map(p => p.y)) + 14;
-            const x = pts[0].x;
-            return (
-              <g key="lengthen">
-                <GlowAura cx={x} cy={(yTop + yBottom) / 2} r={Math.max(24, (yBottom - yTop) / 2 + 12)} color={MOTIF_GREEN} dur={3.8} />
-                <LengthenPath x={x} yFrom={yBottom} yTo={yTop} color={MOTIF_GREEN} />
-              </g>
-            );
-          })()}
-          {regions.includes('shoulders') && points.shoulders && (
-            <g key="shoulders">
-              <GlowAura cx={points.shoulders.x} cy={points.shoulders.y} r={18} color={MOTIF_BLUE} dur={3.2} />
-              <WideningArrows cx={points.shoulders.x} cy={points.shoulders.y} color={MOTIF_BLUE} />
-            </g>
-          )}
-          {regions.includes('hands') && points.hands && (
-            <g key="hands">
-              <GlowAura cx={points.hands.x} cy={points.hands.y} r={16} color={MOTIF_BLUE} dur={3.2} />
-              <ReleaseArrows leftX={points.hands.x - 10} rightX={points.hands.x + 10} yFrom={points.hands.y - 12} yTo={points.hands.y + 14} color={MOTIF_BLUE} />
-            </g>
-          )}
-          {regions.includes('pelvis') && points.pelvis && (
-            <g key="pelvis">
-              <GlowAura cx={points.pelvis.x} cy={points.pelvis.y} r={16} color={MOTIF_PEACH} dur={3.2} />
-              <SettleArrow x={points.pelvis.x} y={points.pelvis.y} color={MOTIF_PEACH} />
-            </g>
-          )}
-        </>
-      )}
-    </svg>
+  return (
+    <div className="relative w-64 h-56 flex items-center justify-center">
+      <ExerciseDiagram diagram={diagram} className="max-w-full max-h-full object-contain select-none" />
+    </div>
   );
 }
 
@@ -1952,7 +1806,7 @@ function MusicPlayer({ audio, fadeOutEnabled, setFadeOutEnabled, t }) {
 // caller's catch block below shows a graceful fallback message instead.
 async function askGuide(userText, exercise, stageId, levelId) {
   const stage = exercise.stages[stageId];
-  const meta = AT_STAGE_META[stageId];
+  const meta = stageMetaFor(exercise, stageId);
   const concept = AT_CONCEPTS[meta.concept];
   const system = `You are the Luminous Guide, a calm virtual Alexander Technique / body-awareness companion inside a wellness app.
 You are guiding ONLY this exercise and this stage right now — do not introduce other exercises or techniques.
@@ -1971,7 +1825,7 @@ Rules:
 - If they describe pain, dizziness, or injury, gently tell them to stop and that this app is not a substitute for a qualified Alexander Technique teacher or doctor.
 - If they sound confused, simplify using everyday language, not technical terms.
 - Never diagnose or give medical advice.
-- Do not end with a question — the app already shows buttons for what happens next.`;
+- Do not end with a question — the app already shows buttons for what happens next.${stage.guideRule ? `\n- ${stage.guideRule}` : ''}`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -2102,6 +1956,15 @@ function SessionIntro({ moodCategory, sessionQueue, activeTags, savedEntries, le
         </div>
       </div>
 
+      <div className={`rounded-3xl p-5 mb-4 ${t.card}`}>
+        <p className={`text-xs uppercase tracking-wider mb-3 ${t.textSoft}`}>How to read the diagrams</p>
+        <div className="flex flex-col gap-3 items-center">
+          <ExerciseDiagram diagram="focusPoints" className="max-w-full h-auto" />
+          <ExerciseDiagram diagram="breathCues" className="max-w-full h-auto" />
+          <ExerciseDiagram diagram="movementCues" className="max-w-full h-auto" />
+        </div>
+      </div>
+
       <div className={`rounded-3xl p-6 mb-4 ${t.card}`}>
         <p className={`text-xs text-center mb-3 ${t.textSoft}`}>How much guidance would you like?</p>
         <GuideLevelPicker level={level} setLevel={setLevel} t={t} />
@@ -2144,7 +2007,7 @@ function SessionIntro({ moodCategory, sessionQueue, activeTags, savedEntries, le
 
 function SessionPauseScreen({ onResumeGently, onEnd, t }) {
   return (
-    <div className="flex flex-col items-center text-center gap-4 py-8" style={{ animation: 'screenIn 650ms cubic-bezier(0.16,1,0.3,1)' }}>
+    <div className="flex flex-col items-center text-center gap-4 py-8" style={{ animation: 'screenIn 1050ms cubic-bezier(0.16,1,0.3,1)' }}>
       <div className={`w-16 h-16 rounded-full flex items-center justify-center ${t.purple}`}>
         <ShieldAlert size={20} strokeWidth={1.7} />
       </div>
@@ -2163,7 +2026,7 @@ function SessionPauseScreen({ onResumeGently, onEnd, t }) {
 
 function AwarenessStage({ exercise, stageId, stageIndex, sessionPosition, level, handsFree, onAdvance, onExit, t }) {
   const stage = exercise.stages[stageId];
-  const meta = AT_STAGE_META[stageId];
+  const meta = stageMetaFor(exercise, stageId);
   const question = stage.questions[0];
   const [responseText, setResponseText] = useState('');
   const [guideReply, setGuideReply] = useState(null);
@@ -2271,13 +2134,13 @@ function AwarenessStage({ exercise, stageId, stageIndex, sessionPosition, level,
   const activeRegions = detected.length > 0 ? detected : stage.regions;
 
   return (
-    <div style={{ animation: 'screenIn 650ms cubic-bezier(0.16,1,0.3,1)' }}>
+    <div style={{ animation: 'screenIn 1050ms cubic-bezier(0.16,1,0.3,1)' }}>
       <div className="flex items-center justify-between mb-2">
         <button onClick={onExit} className={`text-sm flex items-center gap-1 ${t.textSoft} hover:opacity-70 transition`}>
           <ChevronLeft size={15} />
         </button>
         <span className={`text-xs tabular-nums tracking-wide ${t.textSoft}`}>
-          Exercise {sessionPosition.exerciseIndex + 1}/{sessionPosition.totalExercises} · {String(stageIndex + 1).padStart(2, '0')}/{String(AT_STAGES.length).padStart(2, '0')}
+          Exercise {sessionPosition.exerciseIndex + 1}/{sessionPosition.totalExercises} · {String(stageIndex + 1).padStart(2, '0')}/{String(stageOrderFor(exercise).length).padStart(2, '0')}
         </span>
       </div>
       <p className={`text-center text-[11px] uppercase tracking-[0.3em] mb-1 ${t.textSoft}`}>{meta.label}</p>
@@ -2379,7 +2242,7 @@ function AwarenessStage({ exercise, stageId, stageIndex, sessionPosition, level,
 
 function LuminousGuideComplete({ exerciseCount, onAnother, onContinue, t }) {
   return (
-    <div className="flex flex-col items-center text-center gap-4 py-8" style={{ animation: 'screenIn 650ms cubic-bezier(0.16,1,0.3,1)' }}>
+    <div className="flex flex-col items-center text-center gap-4 py-8" style={{ animation: 'screenIn 1050ms cubic-bezier(0.16,1,0.3,1)' }}>
       <div className={`w-16 h-16 rounded-full flex items-center justify-center ${t.purple}`}>
         <Compass size={20} strokeWidth={1.7} />
       </div>
@@ -2482,8 +2345,9 @@ function LuminousGuideFlow({ moodCategory, tensionAreas, need, quizAnswers, save
     if (signal === 'restless') insertNext('restless');
     if (signal === 'tired') insertNext('lowEnergy');
 
-    const nextStage = signal === 'calm' ? AT_STAGES.length - 1 : stageIndex + 1;
-    if (nextStage >= AT_STAGES.length) completeExercise();
+    const stageCount = stageOrderFor(exercise).length;
+    const nextStage = signal === 'calm' ? stageCount - 1 : stageIndex + 1;
+    if (nextStage >= stageCount) completeExercise();
     else setStageIndex(nextStage);
   }
 
@@ -2530,7 +2394,7 @@ function LuminousGuideFlow({ moodCategory, tensionAreas, need, quizAnswers, save
         <AwarenessStage
           key={exercise.id + '-' + stageIndex}
           exercise={exercise}
-          stageId={AT_STAGES[stageIndex]}
+          stageId={stageOrderFor(exercise)[stageIndex]}
           stageIndex={stageIndex}
           sessionPosition={{ exerciseIndex, totalExercises: sessionQueue.length }}
           level={level}
@@ -3366,7 +3230,7 @@ export default function LuminousApp() {
         @keyframes morphB { 0%, 100% { border-radius: 55% 45% 40% 60% / 40% 55% 45% 60%; } 50% { border-radius: 35% 65% 60% 40% / 60% 40% 55% 45%; } }
         @keyframes morphC { 0%, 100% { border-radius: 48% 52% 55% 45% / 60% 45% 55% 40%; } 50% { border-radius: 64% 36% 42% 58% / 40% 60% 45% 55%; } }
         @keyframes floatY { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-        .luminous-screen { animation: screenIn 850ms cubic-bezier(0.16,1,0.3,1); }
+        .luminous-screen { animation: screenIn 1400ms cubic-bezier(0.16,1,0.3,1); }
         .luminous-screen * { transition-timing-function: cubic-bezier(0.16,1,0.3,1); }
       `}</style>
 
