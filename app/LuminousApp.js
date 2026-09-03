@@ -317,37 +317,37 @@ const AT_EXERCISES = [
     },
     stages: {
       prepare: {
-        prompt: 'Stand a few inches in front of your chair. Sense your length, and let your weight settle evenly over both feet.',
+        prompt: 'Stand a few inches in front of your chair, feet flat and hip-width apart, knees soft. Let your spine lengthen and your shoulders stay wide and relaxed, with your head balanced freely on top — no straining.',
         questions: ['What do you notice about how you’re standing right now?'],
         regions: ['feet', 'spine'],
         guideRule: 'The person may describe feeling stiff, uneven, or off-balance — accept that exactly as they describe it. Do not soften, correct, or reinterpret their words.',
       },
       initiate: {
-        prompt: 'Begin to lower down. Let your head stay free and your back lengthen as you hinge from your hips and knees together, moving from your center.',
+        prompt: 'Begin to lower down. Keep your head free and your neck long, without pushing your chin forward, and let your back stay long as you hinge from your hips and knees together — no slouching.',
         questions: ['What did you notice as you began to move?'],
         regions: ['neck', 'spine'],
         guideRule: 'If they mention cracking joints, feeling off-balance, or trouble hinging, reflect that back in their own words rather than offering a "correct" version.',
       },
       sitDown: {
-        prompt: 'Continue lowering until your sit bones find the chair. Let your weight be carried by the chair and your feet, not a last-second drop.',
+        prompt: 'Continue lowering until you land gently, your weight balanced between your feet and the chair. Let your ribs stay soft so your breathing can stay natural, and let your head stay balanced, looking straight ahead.',
         questions: ['What did you notice as you lowered down?'],
         regions: ['pelvis', 'spine'],
         guideRule: 'If they describe landing hard or losing control on the way down, accept that description exactly as given, without judgment or correction.',
       },
       prepareToStand: {
-        prompt: 'Come forward to the front of your seat, feet under your knees. Lean forward from your hips, keeping your spine long and your head free.',
+        prompt: 'Shift forward to the front of your seat, feet flat and under your knees for full support. Hinge slightly forward from your hips, keeping your back straight.',
         questions: ['What do you notice about your feet and readiness to rise?'],
         regions: ['feet', 'pelvis'],
         guideRule: 'Mirror their description of their posture or readiness back in their own terms — do not correct or rephrase it.',
       },
       rise: {
-        prompt: 'Push the floor away with your feet and rise smoothly, letting your whole body coordinate as one — no need to reach for your hands.',
+        prompt: 'Push through your feet to straighten your knees — without locking them — and rise smoothly, keeping your back long and unclenched. Let the rest of your body follow your head up.',
         questions: ['What did you notice as you rose?'],
         regions: ['feet', 'spine'],
         guideRule: 'If they mention using their hands or straining in their thighs, keep their wording exactly as given rather than substituting an "ideal" version.',
       },
       stand: {
-        prompt: 'Arrive standing. Let yourself lengthen up naturally, then pause for a moment and sense your balance.',
+        prompt: 'Arrive standing tall, your head floating effortlessly on your spine. Let your shoulders stay wide and dropped, your knees soft, and your feet hip-width apart.',
         questions: ['What do you notice now that you’ve arrived standing?'],
         regions: ['spine', 'feet'],
         guideRule: 'Accept their final assessment exactly as stated — taller, shorter, stiff, relaxed, whatever they say — without steering it toward a positive spin.',
