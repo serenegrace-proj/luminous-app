@@ -972,6 +972,16 @@ const EXERCISE_DIAGRAMS = {
   focusPoints: { src: `${EXERCISE_DIAGRAM_BASE}/11-focus-points.png`, alt: 'Focus points legend: awareness, expansion, grounding' },
   breathCues: { src: `${EXERCISE_DIAGRAM_BASE}/12-breath-cues.png`, alt: 'Breath cues legend: inhale, exhale' },
   movementCues: { src: `${EXERCISE_DIAGRAM_BASE}/13-movement-cues.png`, alt: 'Movement cues legend: gently move, lengthen, release, repeat' },
+
+  // The six Sitting → Standing chair-sequence photos (public/sit-to-stand/),
+  // keyed by the exercise's own stageOrder ids so AwarenessIllustration can
+  // look one up directly by stageId.
+  prepare: { src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/sit-to-stand/1-prepare.jpg`, alt: 'Prepare — stand in front of the chair' },
+  initiate: { src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/sit-to-stand/2-initiate.jpg`, alt: 'Initiate — begin the movement' },
+  sitDown: { src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/sit-to-stand/3-sit-down.jpg`, alt: 'Sit down — lower into the chair' },
+  prepareToStand: { src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/sit-to-stand/4-prepare-to-stand.jpg`, alt: 'Prepare to stand — get ready to rise' },
+  rise: { src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/sit-to-stand/5-rise.jpg`, alt: 'Rise — stand up smoothly' },
+  stand: { src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/sit-to-stand/6-stand.jpg`, alt: 'Stand — arrive standing' },
 };
 
 function ExerciseDiagram({ diagram, className }) {
@@ -1582,52 +1592,6 @@ function RecliningFigure({ ink }) {
   );
 }
 
-// A simple side-view chair outline — seat, two legs, backrest — used only
-// behind the Sitting → Standing chair sequence.
-function SideChair({ ink }) {
-  const p = { stroke: ink, strokeWidth: 1.4, fill: 'none', strokeLinecap: 'round' };
-  return (
-    <g opacity="0.5">
-      <path d="M70,150 L142,150" {...p} />
-      <path d="M142,150 L142,198" {...p} />
-      <path d="M74,150 L74,198" {...p} />
-      <path d="M74,150 L74,90" {...p} />
-    </g>
-  );
-}
-
-// Hand-posed side-view joints (head/neck/hip/knee/ankle) for each of the six
-// chair-sequence steps — a literal, single-figure retelling of the reference
-// chart's six side-view panels, rather than a generic pose + region overlay.
-const CHAIR_POSES = {
-  prepare: { head: { x: 110, y: 44 }, neck: { x: 110, y: 64 }, hip: { x: 108, y: 130 }, knee: { x: 106, y: 176 }, ankle: { x: 104, y: 214 }, focus: 'head' },
-  initiate: { head: { x: 126, y: 56 }, neck: { x: 120, y: 72 }, hip: { x: 106, y: 132 }, knee: { x: 110, y: 178 }, ankle: { x: 104, y: 214 }, focus: 'spine' },
-  sitDown: { head: { x: 110, y: 72 }, neck: { x: 110, y: 90 }, hip: { x: 108, y: 150 }, knee: { x: 140, y: 178 }, ankle: { x: 140, y: 214 }, focus: 'pelvis' },
-  prepareToStand: { head: { x: 134, y: 84 }, neck: { x: 128, y: 100 }, hip: { x: 108, y: 150 }, knee: { x: 140, y: 178 }, ankle: { x: 138, y: 214 }, focus: 'feet' },
-  rise: { head: { x: 130, y: 70 }, neck: { x: 126, y: 86 }, hip: { x: 118, y: 132 }, knee: { x: 136, y: 176 }, ankle: { x: 136, y: 214 }, focus: 'spine' },
-  stand: { head: { x: 110, y: 44 }, neck: { x: 110, y: 64 }, hip: { x: 108, y: 130 }, knee: { x: 106, y: 176 }, ankle: { x: 104, y: 214 }, focus: 'head' },
-};
-
-function ChairSequenceFigure({ step, ink }) {
-  const j = CHAIR_POSES[step] || CHAIR_POSES.prepare;
-  const p = { stroke: ink, strokeWidth: 1.5, fill: 'none', strokeLinecap: 'round' };
-  return (
-    <g>
-      <SideChair ink={ink} />
-      <circle cx={j.head.x} cy={j.head.y} r="17" {...p} />
-      <path d={`M${j.neck.x + 3},${j.neck.y + 6} Q${j.neck.x + 15},${(j.neck.y + j.hip.y) / 2} ${j.hip.x + 6},${j.hip.y - 6}`} {...p} opacity="0.8" />
-      <path d={`M${j.neck.x},${j.neck.y} L${j.hip.x},${j.hip.y}`} {...p} />
-      <path d={`M${j.hip.x},${j.hip.y} L${j.knee.x},${j.knee.y}`} {...p} />
-      <path d={`M${j.knee.x},${j.knee.y} L${j.ankle.x},${j.ankle.y}`} {...p} />
-      <path d={`M${j.ankle.x - 4},${j.ankle.y} L${j.ankle.x + 14},${j.ankle.y}`} {...p} />
-      {j.focus === 'head' && <GlowAura cx={j.head.x} cy={j.head.y + 10} r={40} color={MOTIF_GREEN} dur={5} />}
-      {j.focus === 'spine' && <circle cx={(j.neck.x + j.hip.x) / 2} cy={(j.neck.y + j.hip.y) / 2} r="4" fill={MOTIF_GREEN} />}
-      {j.focus === 'pelvis' && <circle cx={j.hip.x} cy={j.hip.y} r="4" fill={MOTIF_GREEN} />}
-      {j.focus === 'feet' && <circle cx={j.ankle.x + 5} cy={j.ankle.y} r="4" fill={MOTIF_GREEN} />}
-    </g>
-  );
-}
-
 function AwarenessIllustration({ pose = 'sitting', activeRegions = [], stageId = 'notice', exercise }) {
   const regions = activeRegions.filter(r => REGION_MOTIF_COLOR[r]);
   const directional = stageId === 'explore' || stageId === 'transfer';
@@ -1641,15 +1605,13 @@ function AwarenessIllustration({ pose = 'sitting', activeRegions = [], stageId =
   const hasPelvis = regions.includes('pelvis');
 
   // Sitting → Standing walks its own literal six-step chair sequence
-  // (Prepare/Initiate/Sit Down/Prepare to Stand/Rise/Stand), matching the
-  // reference chart's side-view chair diagrams rather than the generic
-  // region-highlight treatment.
+  // (Prepare/Initiate/Sit Down/Prepare to Stand/Rise/Stand) — the real
+  // reference photos, one per stageOrder id, shown verbatim.
   if (exercise && exercise.id === 'sitToStand') {
     return (
-      <svg viewBox="0 0 200 220" className="relative w-64 h-56">
-        <AuraDefs />
-        <ChairSequenceFigure step={stageId} ink={ILLUSTRATION_INK} />
-      </svg>
+      <div className="relative w-64 h-56 flex items-center justify-center">
+        <ExerciseDiagram diagram={stageId} className="max-w-full max-h-full object-contain select-none" />
+      </div>
     );
   }
 
