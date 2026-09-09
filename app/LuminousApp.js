@@ -7,6 +7,7 @@ import {
   Check, ArrowUp, ArrowDown, Sparkles, Plus, Minus, X,
   Waves, AlertTriangle, TrendingUp, BarChart3, Home, Music, Tag, History,
   MessageCircle, Send, ShieldAlert, Compass, Mic, Settings, BookOpen,
+  Maximize2, Minimize2,
 } from 'lucide-react';
 
 /* =========================================================================
@@ -956,7 +957,8 @@ const LOGO_SRC = `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.png`;
 // The 13 supplied exercise-diagram PNGs (public/exercises/) — used verbatim,
 // never redrawn. AwarenessIllustration picks one of the ten pose diagrams
 // per moment; the three legend images (focusPoints/breathCues/movementCues)
-// are shown once, up front, in SessionIntro.
+// are kept here unused for now — the session-intro walkthrough of them was
+// removed as unnecessary.
 const EXERCISE_DIAGRAM_BASE = `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/exercises`;
 const EXERCISE_DIAGRAMS = {
   pause: { src: `${EXERCISE_DIAGRAM_BASE}/01-pause.png`, alt: 'Pause — notice your body' },
@@ -1288,6 +1290,21 @@ function useAmbientAudio() {
     return buffer;
   };
 
+  // A leaky-integrator random walk over white noise — true brown noise
+  // (energy falling ~6dB/octave), rather than just a low-pass filter.
+  const makeBrownNoiseBuffer = (ctx) => {
+    const bufferSize = 2 * ctx.sampleRate;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      last = (last + 0.02 * white) / 1.02;
+      data[i] = last * 3.5;
+    }
+    return buffer;
+  };
+
   const play = useCallback((track) => {
     if (!track) { stop(); return; } // "No music"
     const ctx = ensureCtx();
@@ -1299,11 +1316,13 @@ function useAmbientAudio() {
 
     if (track.noise) {
       const noise = ctx.createBufferSource();
-      noise.buffer = makeNoiseBuffer(ctx);
+      noise.buffer = track.noise === 'brown' ? makeBrownNoiseBuffer(ctx) : makeNoiseBuffer(ctx);
       noise.loop = true;
       const filter = ctx.createBiquadFilter();
       if (track.noise === 'rain') { filter.type = 'highpass'; filter.frequency.value = 1200; }
       else if (track.noise === 'ocean') { filter.type = 'lowpass'; filter.frequency.value = 500; }
+      else if (track.noise === 'brown') { filter.type = 'lowpass'; filter.frequency.value = 900; }
+      else if (track.noise === 'white') { filter.type = 'allpass'; filter.frequency.value = 1000; }
       else { filter.type = 'bandpass'; filter.frequency.value = 800; filter.Q.value = 0.6; }
       noise.connect(filter);
       filter.connect(gain);
@@ -1804,6 +1823,25 @@ Rules:
   return textBlock ? textBlock.text.trim() : "Thank you for sharing that — continue whenever you're ready.";
 }
 
+// Thin wrapper around the Fullscreen API — tracks whether the document is
+// currently fullscreen (so it stays in sync if the user presses Esc) and
+// exposes a single toggle.
+function useFullscreen() {
+  const [active, setActive] = useState(false);
+  useEffect(() => {
+    const onChange = () => setActive(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+  const toggle = useCallback(() => {
+    try {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    } catch (e) { /* fullscreen unavailable — safe to ignore */ }
+  }, []);
+  return { active, toggle };
+}
+
 // Minimal wrapper around the browser's SpeechRecognition API. Falls back
 // gracefully — `supported` is false on browsers without it, and the caller
 // already has a text input as the primary path either way.
@@ -1915,15 +1953,6 @@ function SessionIntro({ moodCategory, sessionQueue, activeTags, savedEntries, le
               </div>
             </div>
           ))}
-        </div>
-      </div>
-
-      <div className={`rounded-3xl p-5 mb-4 ${t.card}`}>
-        <p className={`text-xs uppercase tracking-wider mb-3 ${t.textSoft}`}>How to read the diagrams</p>
-        <div className="flex flex-col gap-3 items-center">
-          <ExerciseDiagram diagram="focusPoints" className="max-w-full h-auto" />
-          <ExerciseDiagram diagram="breathCues" className="max-w-full h-auto" />
-          <ExerciseDiagram diagram="movementCues" className="max-w-full h-auto" />
         </div>
       </div>
 
@@ -2588,6 +2617,22 @@ function SettingsScreen({ savedEntries, nav, t }) {
   });
   const maxWeekCount = Math.max(1, ...weekCounts.map(w => w.count));
 
+  const studyMinutesFor = (s) => s.studyMin * (s.rounds || 1);
+  const todayFocusMin = studyLog
+    .filter(s => new Date(s.date).toDateString() === today.toDateString())
+    .reduce((sum, s) => sum + studyMinutesFor(s), 0);
+  const weekFocusMin = studyLog
+    .filter(s => new Date(s.date).getTime() >= today.getTime() - 6 * 86400000)
+    .reduce((sum, s) => sum + studyMinutesFor(s), 0);
+  const ratedSessions = studyLog.filter(s => typeof s.focusRating === 'number');
+  const avgFocusRating = ratedSessions.length
+    ? (ratedSessions.reduce((sum, s) => sum + s.focusRating, 0) / ratedSessions.length).toFixed(1)
+    : null;
+  const goalTrackedSessions = studyLog.filter(s => typeof s.goalCompleted === 'boolean');
+  const goalCompletionRate = goalTrackedSessions.length
+    ? Math.round(100 * goalTrackedSessions.filter(s => s.goalCompleted).length / goalTrackedSessions.length)
+    : null;
+
   return (
     <Shell t={t}>
       {nav && <NavBar active="settings" {...nav} t={t} />}
@@ -2661,6 +2706,16 @@ function SettingsScreen({ savedEntries, nav, t }) {
               <span className={`text-[10px] ${t.textSoft}`}>{w.label}</span>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className={`rounded-3xl p-6 mb-5 ${t.card}`}>
+        <p className={`text-xs uppercase tracking-wider mb-4 ${t.textSoft}`}>Focus analytics</p>
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard label="Today's focus" value={`${todayFocusMin}m`} t={t} />
+          <StatCard label="This week's focus" value={`${weekFocusMin}m`} t={t} />
+          <StatCard label="Avg. focus rating" value={avgFocusRating !== null ? `${avgFocusRating}/5` : '—'} t={t} />
+          <StatCard label="Goal completion" value={goalCompletionRate !== null ? `${goalCompletionRate}%` : '—'} t={t} />
         </div>
       </div>
 
@@ -2741,10 +2796,28 @@ function Stepper({ label, value, onChange, step = 5, min = 0, max = 180, t }) {
 const POMODORO_PRESETS = [
   { name: 'Quick Focus', study: 15, brk: 5 },
   { name: 'Classic Pomodoro', study: 25, brk: 5 },
-  { name: 'Deep Focus', study: 50, brk: 10 },
+  { name: 'Deep Focus', study: 52, brk: 17 },
 ];
 
-function PomodoroSetup({ studyMin, setStudyMin, breakMin, setBreakMin, onContinue, onExit, nav, t }) {
+// Quick-fill chips for the goal field — a tap sets the goal text outright
+// rather than appending, so it stays a fast micro-goal pick, not a builder.
+const MICRO_GOALS = ['Read a chapter', 'Write / draft', 'Problem set', 'Review notes', 'Project work', 'Study flashcards'];
+
+// In-session ambient soundscapes, reusing useAmbientAudio's noise engine.
+const FOCUS_SOUNDSCAPES = [
+  { id: 'brown', label: 'Brown noise', noise: 'brown', icon: Waves },
+  { id: 'rain', label: 'Rain', noise: 'rain', icon: CloudRain },
+  { id: 'white', label: 'White noise', noise: 'white', icon: Sparkles },
+];
+
+const CYCLES_PER_LONG_BREAK = 4;
+const LONG_BREAK_MIN = 20;
+
+function PomodoroSetup({
+  studyMin, setStudyMin, breakMin, setBreakMin,
+  goal, setGoal, warmupEnabled, setWarmupEnabled, warmupMin, setWarmupMin,
+  onContinue, onExit, nav, t,
+}) {
   const matchedPreset = POMODORO_PRESETS.find(p => p.study === studyMin && p.brk === breakMin);
   return (
     <Shell t={t}>
@@ -2754,7 +2827,7 @@ function PomodoroSetup({ studyMin, setStudyMin, breakMin, setBreakMin, onContinu
         <p className={`text-xs max-w-xs ${t.textSoft}`}>Choose how long you'll study, and how long you'll rest after.</p>
       </div>
 
-      <div className={`rounded-3xl p-7 ${t.card}`}>
+      <div className={`rounded-3xl p-7 mb-4 ${t.card}`}>
         <div className="flex flex-wrap justify-center gap-2 mb-6">
           {POMODORO_PRESETS.map(p => (
             <button
@@ -2783,6 +2856,46 @@ function PomodoroSetup({ studyMin, setStudyMin, breakMin, setBreakMin, onContinu
         </div>
       </div>
 
+      <div className={`rounded-3xl p-7 mb-4 ${t.card}`}>
+        <p className={`text-sm mb-3 ${t.heading}`}>What do you hope to accomplish?</p>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {MICRO_GOALS.map(g => (
+            <button
+              key={g}
+              onClick={() => setGoal(g)}
+              className={`text-[11px] px-3 py-1.5 rounded-full transition ${
+                goal === g ? 'bg-sky-100/80 text-sky-700 shadow-sm' : t.buttonGhost
+              }`}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+        <textarea
+          autoFocus
+          value={goal}
+          onChange={(e) => setGoal(e.target.value)}
+          placeholder="What do you hope to accomplish this session?"
+          rows={3}
+          className={`w-full rounded-2xl p-4 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sky-200 transition ${t.input}`}
+        />
+      </div>
+
+      <div className={`rounded-2xl p-4 mb-4 ${t.card}`}>
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input type="checkbox" checked={warmupEnabled} onChange={(e) => setWarmupEnabled(e.target.checked)} className="mt-1 accent-sky-300" />
+          <span>
+            <span className={`text-sm block ${t.heading}`}>Warm-up countdown</span>
+            <span className={`text-[11px] ${t.textSoft}`}>A short countdown to settle in and get ready before the timer starts.</span>
+          </span>
+        </label>
+        {warmupEnabled && (
+          <div className="mt-4">
+            <Stepper label="Warm-up time" value={warmupMin} onChange={setWarmupMin} step={1} min={2} max={5} t={t} />
+          </div>
+        )}
+      </div>
+
       <div className="flex justify-between items-center mt-6">
         <button onClick={onExit} className={`flex items-center gap-1 text-sm ${t.textSoft} hover:opacity-70 transition`}>
           <ChevronLeft size={15} /> Back
@@ -2795,7 +2908,7 @@ function PomodoroSetup({ studyMin, setStudyMin, breakMin, setBreakMin, onContinu
   );
 }
 
-function PrepScreen({ secondsLeft, goal, setGoal, onReady, t }) {
+function PrepScreen({ secondsLeft, goal, onReady, t }) {
   return (
     <Shell t={t}>
       <div className="flex flex-col items-center text-center gap-1 mb-6">
@@ -2804,11 +2917,11 @@ function PrepScreen({ secondsLeft, goal, setGoal, onReady, t }) {
       </div>
 
       <div className={`rounded-3xl p-7 ${t.card}`}>
-        <ul className="flex flex-col gap-3 mb-6">
+        <ul className="flex flex-col gap-3">
           {[
             'Put your phone and other distractions away.',
             'Get a drink of water nearby.',
-            'Write down what you hope to accomplish.',
+            'Settle in and take a slow breath.',
           ].map((line, i) => (
             <li key={i} className="flex items-start gap-3">
               <span className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${t.purple}`}>
@@ -2819,13 +2932,11 @@ function PrepScreen({ secondsLeft, goal, setGoal, onReady, t }) {
           ))}
         </ul>
 
-        <textarea
-          value={goal}
-          onChange={(e) => setGoal(e.target.value)}
-          placeholder="What do you hope to accomplish this session?"
-          rows={3}
-          className={`w-full rounded-2xl p-4 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sky-200 transition ${t.input}`}
-        />
+        {goal && (
+          <p className={`text-xs mt-6 pt-5 border-t ${t.isDark ? 'border-white/10' : 'border-black/5'} ${t.textSoft}`}>
+            Your goal: <span className={t.text}>“{goal}”</span>
+          </p>
+        )}
       </div>
 
       <div className="flex justify-center mt-6">
@@ -2837,22 +2948,70 @@ function PrepScreen({ secondsLeft, goal, setGoal, onReady, t }) {
   );
 }
 
-function FocusTimer({ label, secondsLeft, totalSeconds, paused, onPauseToggle, onEndEarly, t }) {
+function FocusTimer({ label, secondsLeft, totalSeconds, paused, onPauseToggle, onEndEarly, soundscape, onToggleSoundscape, t }) {
   const fraction = totalSeconds > 0 ? secondsLeft / totalSeconds : 0;
+  const elapsed = 1 - fraction;
+  const fullscreen = useFullscreen();
+  const size = 256;
+  const strokeWidth = 3;
+  const r = (size - strokeWidth) / 2;
+  const c = 2 * Math.PI * r;
+
   return (
     <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-center px-6">
-      <p className={`text-xs uppercase tracking-[0.2em] mb-6 ${t.textSoft}`}>{label}</p>
-      <p
-        className={`font-extralight tabular-nums leading-none ${t.heading}`}
-        style={{ fontSize: 'clamp(4.5rem, 18vw, 8.5rem)', letterSpacing: '-0.02em' }}
+      <button
+        onClick={fullscreen.toggle}
+        title={fullscreen.active ? 'Exit full screen' : 'Full screen, distraction-free'}
+        className={`absolute top-6 right-6 w-9 h-9 rounded-full flex items-center justify-center transition opacity-40 hover:opacity-100 ${t.buttonGhost}`}
       >
-        {fmt(secondsLeft)}
-      </p>
-      <div className={`w-40 h-1 rounded-full overflow-hidden mt-8 ${t.isDark ? 'bg-neutral-800' : 'bg-neutral-100'}`}>
-        <div className="h-full transition-all duration-700" style={{ width: `${(1 - fraction) * 100}%`, background: `linear-gradient(to right, ${BRAND.mistBlue}, ${BRAND.sageFog}, ${BRAND.sageGreen})` }} />
+        {fullscreen.active ? <Minimize2 size={14} strokeWidth={1.7} /> : <Maximize2 size={14} strokeWidth={1.7} />}
+      </button>
+
+      <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="absolute inset-0" style={{ transform: 'rotate(-90deg)' }}>
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={t.isDark ? '#2A2B31' : '#EEF0F1'} strokeWidth={strokeWidth} />
+          <circle
+            cx={size / 2} cy={size / 2} r={r} fill="none"
+            stroke="url(#focusRingGradient)" strokeWidth={strokeWidth} strokeLinecap="round"
+            strokeDasharray={c} strokeDashoffset={c * (1 - elapsed)}
+            style={{ transition: 'stroke-dashoffset 1s linear' }}
+          />
+          <defs>
+            <linearGradient id="focusRingGradient" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor={BRAND.mistBlue} />
+              <stop offset="100%" stopColor={BRAND.sageGreen} />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div className="relative flex flex-col items-center">
+          <p className={`text-xs uppercase tracking-[0.2em] mb-3 ${t.textSoft}`}>{label}</p>
+          <p
+            className={`font-extralight tabular-nums leading-none ${t.heading}`}
+            style={{ fontSize: 'clamp(2.6rem, 10vw, 3.4rem)', letterSpacing: '-0.02em' }}
+          >
+            {fmt(secondsLeft)}
+          </p>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4 mt-10 opacity-40 hover:opacity-100 transition-opacity duration-[400ms]">
+      <div className="flex items-center gap-2 mt-8">
+        {FOCUS_SOUNDSCAPES.map(s => {
+          const Icon = s.icon;
+          const active = soundscape === s.id;
+          return (
+            <button
+              key={s.id}
+              onClick={() => onToggleSoundscape(s)}
+              title={s.label}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition ${active ? 'bg-sky-100/80 text-sky-700 shadow-sm' : t.buttonGhost}`}
+            >
+              <Icon size={14} strokeWidth={1.7} />
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-4 mt-8 opacity-40 hover:opacity-100 transition-opacity duration-[400ms]">
         <button onClick={onPauseToggle} className={`w-10 h-10 rounded-full flex items-center justify-center transition ${t.buttonGhost}`}>
           {paused ? <Play size={15} strokeWidth={1.6} /> : <Pause size={15} strokeWidth={1.6} />}
         </button>
@@ -2862,7 +3021,10 @@ function FocusTimer({ label, secondsLeft, totalSeconds, paused, onPauseToggle, o
   );
 }
 
-function StudyReflectScreen({ studyMin, rounds, goal, mood, setMood, focusRating, setFocusRating, onFinish, saved, t }) {
+function StudyReflectScreen({
+  studyMin, rounds, goal, mood, setMood, focusRating, setFocusRating,
+  goalCompleted, setGoalCompleted, onFinish, saved, t,
+}) {
   return (
     <Shell t={t}>
       <div className="flex flex-col items-center text-center gap-3 mb-8">
@@ -2881,15 +3043,35 @@ function StudyReflectScreen({ studyMin, rounds, goal, mood, setMood, focusRating
         <div className="mt-8">
           <div className="flex justify-between items-baseline mb-1.5">
             <p className={`text-xs ${t.textSoft}`}>How focused were you?</p>
-            <span className={`text-xs tabular-nums ${t.heading}`}>{focusRating} / 10</span>
+            <span className={`text-xs tabular-nums ${t.heading}`}>{focusRating} / 5</span>
           </div>
           <input
-            type="range" min="1" max="10"
+            type="range" min="1" max="5"
             value={focusRating}
             onChange={(e) => setFocusRating(parseInt(e.target.value, 10))}
             className="w-full accent-sky-300"
           />
         </div>
+
+        {goal && (
+          <div className="mt-8">
+            <p className={`text-xs mb-2 ${t.textSoft}`}>Did you complete your goal?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setGoalCompleted(true)}
+                className={`flex-1 px-4 py-2.5 rounded-full text-xs transition ${goalCompleted === true ? 'bg-sky-100/80 text-sky-700 shadow-sm' : t.buttonGhost}`}
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setGoalCompleted(false)}
+                className={`flex-1 px-4 py-2.5 rounded-full text-xs transition ${goalCompleted === false ? 'bg-sky-100/80 text-sky-700 shadow-sm' : t.buttonGhost}`}
+              >
+                Not quite
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-center mt-6">
@@ -2930,18 +3112,46 @@ function RoundCheckScreen({ roundsCompleted, onAnother, onDone, t }) {
 }
 
 function PomodoroFlow({ t, onExit, nav }) {
-  const [stage, setStage] = useState('setup'); // setup | prep | study | break | roundCheck | reflect
+  const [stage, setStage] = useState('setup'); // setup | prep | study | break | longBreak | roundCheck | reflect
   const [studyMin, setStudyMin] = useState(25);
   const [breakMin, setBreakMin] = useState(5);
   const [goal, setGoal] = useState('');
-  const [secondsLeft, setSecondsLeft] = useState(300);
+  const [warmupEnabled, setWarmupEnabled] = useState(true);
+  const [warmupMin, setWarmupMin] = useState(3);
+  const [secondsLeft, setSecondsLeft] = useState(180);
   const [paused, setPaused] = useState(false);
   const [mood, setMood] = useState(null);
-  const [focusRating, setFocusRating] = useState(7);
+  const [focusRating, setFocusRating] = useState(3);
+  const [goalCompleted, setGoalCompleted] = useState(null);
   const [roundsCompleted, setRoundsCompleted] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [soundscape, setSoundscape] = useState(null);
+  const ambient = useAmbientAudio();
 
-  const durationFor = (s) => (s === 'prep' ? 300 : s === 'study' ? studyMin * 60 : s === 'break' ? breakMin * 60 : 0);
+  // The soundscape is only meant to accompany an active timer — stop it
+  // whenever the flow unmounts entirely (e.g. exiting mid-timer).
+  useEffect(() => {
+    return () => ambient.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function stopSoundscape() {
+    ambient.stop();
+    setSoundscape(null);
+  }
+
+  function toggleSoundscape(s) {
+    if (soundscape === s.id) stopSoundscape();
+    else { ambient.play(s); setSoundscape(s.id); }
+  }
+
+  const durationFor = (s) => (
+    s === 'prep' ? warmupMin * 60
+    : s === 'study' ? studyMin * 60
+    : s === 'break' ? breakMin * 60
+    : s === 'longBreak' ? LONG_BREAK_MIN * 60
+    : 0
+  );
 
   function goToStage(next) {
     setPaused(false);
@@ -2949,20 +3159,32 @@ function PomodoroFlow({ t, onExit, nav }) {
     setStage(next);
   }
 
+  // The soundscape only accompanies study/break/longBreak — the only path
+  // out of those stages is finishRound, so this is the one place to clear it.
   function finishRound() {
+    stopSoundscape();
     setRoundsCompleted(r => r + 1);
     setStage('roundCheck');
   }
 
+  // After a study round, every 4th cycle takes the longer automatic break
+  // instead of the usual short one (skipped entirely if breaks are off).
+  function afterStudy() {
+    if (breakMin <= 0) { finishRound(); return; }
+    const round = roundsCompleted + 1;
+    goToStage(round % CYCLES_PER_LONG_BREAK === 0 ? 'longBreak' : 'break');
+  }
+
   useEffect(() => {
-    if (!['prep', 'study', 'break'].includes(stage) || paused) return;
+    if (!['prep', 'study', 'break', 'longBreak'].includes(stage) || paused) return;
     const iv = setInterval(() => {
       setSecondsLeft(s => {
         if (s <= 1) {
           setTimeout(() => {
             if (stage === 'prep') goToStage('study');
-            else if (stage === 'study') (breakMin > 0 ? goToStage('break') : finishRound());
+            else if (stage === 'study') afterStudy();
             else if (stage === 'break') finishRound();
+            else if (stage === 'longBreak') finishRound();
           }, 0);
           return 0;
         }
@@ -2971,13 +3193,13 @@ function PomodoroFlow({ t, onExit, nav }) {
     }, 1000);
     return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, paused, breakMin]);
+  }, [stage, paused, breakMin, roundsCompleted]);
 
   async function handleFinish() {
     const entry = {
       date: new Date().toISOString(),
       studyMin, breakMin, rounds: Math.max(1, roundsCompleted),
-      goal: goal.trim(), mood, focusRating,
+      goal: goal.trim(), mood, focusRating, goalCompleted,
     };
     setSaved(true);
     try {
@@ -2997,20 +3219,24 @@ function PomodoroFlow({ t, onExit, nav }) {
       <PomodoroSetup
         studyMin={studyMin} setStudyMin={setStudyMin}
         breakMin={breakMin} setBreakMin={setBreakMin}
-        onContinue={() => goToStage('prep')}
+        goal={goal} setGoal={setGoal}
+        warmupEnabled={warmupEnabled} setWarmupEnabled={setWarmupEnabled}
+        warmupMin={warmupMin} setWarmupMin={setWarmupMin}
+        onContinue={() => goToStage(warmupEnabled ? 'prep' : 'study')}
         onExit={onExit}
         nav={nav}
         t={t}
       />
     );
   } else if (stage === 'prep') {
-    content = <PrepScreen secondsLeft={secondsLeft} goal={goal} setGoal={setGoal} onReady={() => goToStage('study')} t={t} />;
+    content = <PrepScreen secondsLeft={secondsLeft} goal={goal} onReady={() => goToStage('study')} t={t} />;
   } else if (stage === 'study') {
     content = (
       <FocusTimer
         label="Study" secondsLeft={secondsLeft} totalSeconds={studyMin * 60}
         paused={paused} onPauseToggle={() => setPaused(p => !p)}
-        onEndEarly={() => (breakMin > 0 ? goToStage('break') : finishRound())}
+        onEndEarly={afterStudy}
+        soundscape={soundscape} onToggleSoundscape={toggleSoundscape}
         t={t}
       />
     );
@@ -3020,6 +3246,17 @@ function PomodoroFlow({ t, onExit, nav }) {
         label="Break" secondsLeft={secondsLeft} totalSeconds={breakMin * 60}
         paused={paused} onPauseToggle={() => setPaused(p => !p)}
         onEndEarly={finishRound}
+        soundscape={soundscape} onToggleSoundscape={toggleSoundscape}
+        t={t}
+      />
+    );
+  } else if (stage === 'longBreak') {
+    content = (
+      <FocusTimer
+        label="Long break" secondsLeft={secondsLeft} totalSeconds={LONG_BREAK_MIN * 60}
+        paused={paused} onPauseToggle={() => setPaused(p => !p)}
+        onEndEarly={finishRound}
+        soundscape={soundscape} onToggleSoundscape={toggleSoundscape}
         t={t}
       />
     );
@@ -3038,6 +3275,7 @@ function PomodoroFlow({ t, onExit, nav }) {
         studyMin={studyMin} rounds={Math.max(1, roundsCompleted)} goal={goal}
         mood={mood} setMood={setMood}
         focusRating={focusRating} setFocusRating={setFocusRating}
+        goalCompleted={goalCompleted} setGoalCompleted={setGoalCompleted}
         onFinish={handleFinish} saved={saved} t={t}
       />
     );
