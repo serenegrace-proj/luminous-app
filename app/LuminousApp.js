@@ -2610,8 +2610,11 @@ function SettingsScreen({ savedEntries, nav, t }) {
   const latestPostLevel = latest ? entryPostFaceLevel(latest) : null;
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
+  // Calendar week, Monday through Sunday — getDay() is 0=Sun..6=Sat, so
+  // (day + 6) % 7 gives days elapsed since this week's Monday.
+  const weekStart = new Date(today.getTime() - ((today.getDay() + 6) % 7) * 86400000);
   const weekCounts = Array.from({ length: 7 }).map((_, i) => {
-    const day = new Date(today.getTime() - (6 - i) * 86400000);
+    const day = new Date(weekStart.getTime() + i * 86400000);
     const count = [...savedEntries, ...studyLog].filter(e => new Date(e.date).toDateString() === day.toDateString()).length;
     return { label: day.toLocaleDateString(undefined, { weekday: 'narrow' }), count };
   });
@@ -2622,7 +2625,7 @@ function SettingsScreen({ savedEntries, nav, t }) {
     .filter(s => new Date(s.date).toDateString() === today.toDateString())
     .reduce((sum, s) => sum + studyMinutesFor(s), 0);
   const weekFocusMin = studyLog
-    .filter(s => new Date(s.date).getTime() >= today.getTime() - 6 * 86400000)
+    .filter(s => new Date(s.date).getTime() >= weekStart.getTime())
     .reduce((sum, s) => sum + studyMinutesFor(s), 0);
   const ratedSessions = studyLog.filter(s => typeof s.focusRating === 'number');
   const avgFocusRating = ratedSessions.length
