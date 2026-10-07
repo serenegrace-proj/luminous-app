@@ -996,7 +996,7 @@ function ExerciseDiagram({ diagram, className }) {
 }
 
 /* -------- the Luminous mark: the brand logo, used wherever the mark appears -------- */
-function LuminousMark({ size = 140, t }) {
+function LuminousMark({ size = 140, aura = true, t }) {
   // A blurred, slightly larger duplicate of the exact same artwork sits
   // behind the crisp mark, so the logo's own colors soften out into the
   // page rather than ending in a hard circular edge — a quiet aura, not a
@@ -1018,7 +1018,8 @@ function LuminousMark({ size = 140, t }) {
       className="relative"
       style={{ width: size, height: size, animation: 'logoFadeIn 1000ms cubic-bezier(0.16,1,0.3,1)' }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {aura && (
+      /* eslint-disable-next-line @next/next/no-img-element */
       <img
         src={LOGO_SRC}
         alt=""
@@ -1036,6 +1037,7 @@ function LuminousMark({ size = 140, t }) {
         }}
         draggable={false}
       />
+      )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={LOGO_SRC}
@@ -3292,16 +3294,31 @@ function SplashScreen({ onBegin, t }) {
   return (
     <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-center px-6 text-center">
       <div className="relative w-56 h-56 sm:w-72 sm:h-72 mb-10 flex items-center justify-center">
+        {/* Each orb is masked with a soft-edged hole in its middle, so the page
+            background shows straight through behind the logo and the colour
+            only frames it — a ring of aura rather than a tint under it. */}
         <div
-          className="absolute inset-0 rounded-full blur-2xl opacity-70"
-          style={{ background: `conic-gradient(from 0deg, ${BRAND.mistBlue}, ${BRAND.sageGreen}, ${BRAND.sageFog}, ${BRAND.mistBlue})`, animation: 'orbSpin 18s linear infinite' }}
+          className="absolute top-1/2 left-1/2 rounded-full blur-2xl opacity-70"
+          style={{
+            width: 340, height: 340, marginTop: -170, marginLeft: -170,
+            background: `conic-gradient(from 0deg, ${BRAND.mistBlue}, ${BRAND.sageGreen}, ${BRAND.sageFog}, ${BRAND.mistBlue})`,
+            animation: 'orbSpin 18s linear infinite',
+            WebkitMaskImage: 'radial-gradient(circle closest-side, transparent 98px, #000 136px, #000 150px, transparent 170px)',
+            maskImage: 'radial-gradient(circle closest-side, transparent 98px, #000 136px, #000 150px, transparent 170px)',
+          }}
         />
         <div
-          className="absolute inset-8 rounded-full blur-xl opacity-80"
-          style={{ background: `conic-gradient(from 90deg, ${BRAND.sageGreen}, ${BRAND.sageFog}, ${BRAND.mistBlue}, ${BRAND.sageGreen})`, animation: 'orbSpin 24s linear infinite reverse' }}
+          className="absolute top-1/2 left-1/2 rounded-full blur-xl opacity-80"
+          style={{
+            width: 280, height: 280, marginTop: -140, marginLeft: -140,
+            background: `conic-gradient(from 90deg, ${BRAND.sageGreen}, ${BRAND.sageFog}, ${BRAND.mistBlue}, ${BRAND.sageGreen})`,
+            animation: 'orbSpin 24s linear infinite reverse',
+            WebkitMaskImage: 'radial-gradient(circle closest-side, transparent 98px, #000 120px, #000 128px, transparent 140px)',
+            maskImage: 'radial-gradient(circle closest-side, transparent 98px, #000 120px, #000 128px, transparent 140px)',
+          }}
         />
         <div style={{ animation: 'orbPulse 6s ease-in-out infinite, floatY 7s ease-in-out infinite' }}>
-          <LuminousMark size={160} t={t} />
+          <LuminousMark size={190} aura={false} t={t} />
         </div>
       </div>
       <p className={`text-2xl sm:text-4xl mb-3 tracking-[0.25em] ${t.heading}`} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>LUMINOUS</p>
