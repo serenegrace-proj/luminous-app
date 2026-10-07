@@ -1394,7 +1394,7 @@ function IntroScreen({ onBegin, onFocus, onSettings, onQuickReset, t, historyCou
       <NavBar active="home" onHome={() => {}} onReset={onBegin} onFocus={onFocus} onSettings={onSettings} t={t} />
 
       <div className="flex flex-col items-center text-center gap-6" style={{ animation: 'screenIn 1150ms cubic-bezier(0.16,1,0.3,1)' }}>
-        <LuminousMark size={62} t={t} />
+        <LuminousMark size={84} t={t} />
         <div>
           <h1 className={`text-2xl font-light mb-1 ${t.heading}`} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>{greeting()}</h1>
           <p className={`text-sm ${t.textSoft}`}>Take a moment for yourself.</p>
@@ -3031,7 +3031,7 @@ function StudyReflectScreen({
   return (
     <Shell t={t}>
       <div className="flex flex-col items-center text-center gap-3 mb-8">
-        <LuminousMark size={48} t={t} />
+        <LuminousMark size={64} t={t} />
         <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }} className={`text-xl font-light ${t.heading}`}>
           Well done — you focused for {studyMin * rounds} minute{studyMin * rounds === 1 ? '' : 's'}
           {rounds > 1 ? ` across ${rounds} rounds` : ''}.
@@ -3301,7 +3301,7 @@ function SplashScreen({ onBegin, t }) {
           style={{ background: `conic-gradient(from 90deg, ${BRAND.sageGreen}, ${BRAND.sageFog}, ${BRAND.mistBlue}, ${BRAND.sageGreen})`, animation: 'orbSpin 24s linear infinite reverse' }}
         />
         <div style={{ animation: 'orbPulse 6s ease-in-out infinite, floatY 7s ease-in-out infinite' }}>
-          <LuminousMark size={118} t={t} />
+          <LuminousMark size={160} t={t} />
         </div>
       </div>
       <p className={`text-2xl sm:text-4xl mb-3 tracking-[0.25em] ${t.heading}`} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>LUMINOUS</p>
